@@ -19,7 +19,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional
+import logging
 import os
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s")
 
 from .llm_service import parse_requirement_via_llm, LLMAllProvidersFailed
 from .taxonomy import load_taxonomy

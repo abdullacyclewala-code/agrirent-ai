@@ -28,6 +28,7 @@ takes over — this path must always work per §4.5, independent of LLM uptime.
 """
 
 import json
+import logging
 import os
 import re
 from typing import Optional
@@ -36,6 +37,8 @@ import requests
 
 from .taxonomy import allowed_vocab_lists
 from .semantic_match import best_match
+
+logger = logging.getLogger("agrirent.llm_service")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -93,6 +96,7 @@ def _extract_json_object(text: str) -> Optional[dict]:
 
 def _call_groq(system_prompt: str, raw_text: str) -> Optional[dict]:
     if not GROQ_API_KEY:
+        logger.warning("[groq] GROQ_API_KEY not set — skipping.")
         return None
     try:
         resp = requests.post(
@@ -110,15 +114,25 @@ def _call_groq(system_prompt: str, raw_text: str) -> Optional[dict]:
             },
             timeout=REQUEST_TIMEOUT_S,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            logger.error("[groq] HTTP %s: %s", resp.status_code, resp.text[:500])
+            return None
         content = resp.json()["choices"][0]["message"]["content"]
-        return _extract_json_object(content)
-    except (requests.RequestException, KeyError, IndexError):
+        parsed = _extract_json_object(content)
+        if parsed is None:
+            logger.error("[groq] Could not parse JSON from model output: %r", content[:500])
+        return parsed
+    except requests.RequestException as e:
+        logger.error("[groq] Request failed: %s", e)
+        return None
+    except (KeyError, IndexError) as e:
+        logger.error("[groq] Unexpected response shape: %s — body: %r", e, resp.text[:500] if 'resp' in dir() else "?")
         return None
 
 
 def _call_gemini(system_prompt: str, raw_text: str) -> Optional[dict]:
     if not GEMINI_API_KEY:
+        logger.warning("[gemini] GEMINI_API_KEY not set — skipping.")
         return None
     try:
         resp = requests.post(
@@ -134,10 +148,19 @@ def _call_gemini(system_prompt: str, raw_text: str) -> Optional[dict]:
             },
             timeout=REQUEST_TIMEOUT_S,
         )
-        resp.raise_for_status()
+        if not resp.ok:
+            logger.error("[gemini] HTTP %s: %s", resp.status_code, resp.text[:500])
+            return None
         content = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-        return _extract_json_object(content)
-    except (requests.RequestException, KeyError, IndexError):
+        parsed = _extract_json_object(content)
+        if parsed is None:
+            logger.error("[gemini] Could not parse JSON from model output: %r", content[:500])
+        return parsed
+    except requests.RequestException as e:
+        logger.error("[gemini] Request failed: %s", e)
+        return None
+    except (KeyError, IndexError) as e:
+        logger.error("[gemini] Unexpected response shape: %s — body: %r", e, resp.text[:500] if 'resp' in dir() else "?")
         return None
 
 
