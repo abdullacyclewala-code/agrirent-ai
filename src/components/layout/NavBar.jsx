@@ -49,6 +49,7 @@ export default function NavBar() {
           </span>
           <span className="font-display text-base font-bold text-paper">Kisan Match</span>
         </NavLink>
+        <RoleToggle />
       </header>
 
       {/* Mobile bottom nav */}

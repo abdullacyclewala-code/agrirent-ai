@@ -57,7 +57,21 @@ export function AuthProvider({ children }) {
 
   const toggleRole = async (role) => {
     // role: "is_farmer" | "is_owner"
-    if (!session?.user?.id || !profile) return;
+    if (!session?.user?.id) {
+      return { data: null, error: { message: "You must be signed in to switch roles." } };
+    }
+    if (!profile) {
+      // Defensive: profile row missing (e.g. handle_new_user trigger didn't fire).
+      // Try to create it now instead of failing silently.
+      const { data: created, error: createErr } = await supabase
+        .from("users")
+        .upsert({ id: session.user.id, [role]: true })
+        .select()
+        .single();
+      if (createErr) return { data: null, error: createErr };
+      setProfile(created);
+      return { data: created, error: null };
+    }
     const updated = { ...profile, [role]: !profile[role] };
     const { data, error } = await supabase
       .from("users")
