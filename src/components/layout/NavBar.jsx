@@ -1,12 +1,32 @@
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, Sparkles, ClipboardList, UserRound, Sprout } from "lucide-react";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/describe-job", label: "Find Equipment", icon: Sparkles },
-  { to: "/booking/bk-1042", label: "Bookings", icon: ClipboardList },
+  { to: "/bookings", label: "Bookings", icon: ClipboardList },
   { to: "/profile", label: "Profile", icon: UserRound },
 ];
+
+function RoleToggle() {
+  const [role, setRole] = useState("farmer");
+  return (
+    <div className="flex items-center rounded-full border border-white/10 bg-white/5 p-1 font-mono text-xs">
+      {["farmer", "owner"].map((r) => (
+        <button
+          key={r}
+          onClick={() => setRole(r)}
+          className={`rounded-full px-3 py-1.5 capitalize transition-colors ${
+            role === r ? "bg-wheat text-ink font-semibold" : "text-paper/50 hover:text-paper"
+          }`}
+        >
+          {r}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function NavBar() {
   return (
@@ -36,12 +56,7 @@ export default function NavBar() {
               </NavLink>
             ))}
           </nav>
-          <NavLink
-            to="/describe-job"
-            className="rounded-xl bg-wheat px-4 py-2.5 text-sm font-semibold text-ink shadow-[0_8px_24px_-8px_rgba(232,179,74,0.6)] transition-transform hover:scale-[1.03]"
-          >
-            List / Rent Equipment
-          </NavLink>
+          <RoleToggle />
         </div>
       </header>
 
