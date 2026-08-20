@@ -7,8 +7,8 @@
 
 ## 0. STATUS *(update this every session)*
 
-**Phase:** 2 — Core marketplace loop
-**Currently building:** Phase 2 done — next up is Phase 3 (LLM free-text parsing + semantic matching, wired into the Phase 2 filter)
+**Phase:** 3 — LLM free-text parsing + semantic matching
+**Currently building:** Phase 3 done — next up is Phase 4 (LightGBM ranking + realtime/FCM)
 
 | Phase | Item | Status |
 |---|---|---|
@@ -18,15 +18,23 @@
 | 2 | Equipment CRUD (owner side) | ✅ `AddEquipment.jsx` (create/edit) + "My Listings" tab in `Profile.jsx` (list/pause/delete). Deviation: no image upload yet — Supabase Storage bucket isn't set up; equipment shows illustrated art instead of photos. |
 | 2 | Rules-based filter (hard compatibility) | ✅ `src/lib/rulesFilter.js` implements §6.3 (equipment_type, operation, crop, HP range, availability, excludes own listings). Deviation: no geo distance filtering yet — Mapbox/PostGIS isn't wired up, so `service_area_radius_km` isn't enforced. Matching/ranking score is a simple rules-based heuristic, explicitly a placeholder for the real Phase 4 LightGBM ranker. |
 | 2 | Basic booking flow (no ML/LLM yet, manual form input) | ✅ `DescribeJob.jsx` → real `requirements` row → `Recommendations.jsx` (real filtered equipment) → `EquipmentDetails.jsx` (real booking creation, with availability + double-booking re-check per §4.5) → `Booking.jsx` (real status tracking + owner accept/reject/mark-in-use/complete, farmer cancel) → `MyBookings.jsx` (new — also fixes a dead `/bookings` nav link from Phase 1). Deviation: no `availability_slots` calendar yet — booking conflict check is a simple date-overlap query against existing Confirmed/In Use bookings on the same equipment, not a full slot system. |
-| 3 | LLM requirement parsing (Gemini/Groq + fallback) | ⬜ |
-| 3 | Semantic matching (sentence-transformers) | ⬜ |
+| 3 | FastAPI backend stood up | ✅ `/backend` (FastAPI, deploy via `backend/render.yaml` on Render free tier). First backend service in the project — Phases 1–2 were Supabase-direct from the frontend. |
+| 3 | LLM requirement parsing (fallback chain) | ✅ `backend/app/llm_service.py` — `POST /requirements/parse`. **Deviation (disclosed):** provider order flipped from the doc's Gemini→Groq to **Groq→Gemini**. As of the Dec 2025 Gemini free-tier cuts, Gemini free tier dropped to 5–15 req/min / 100–1,000 req/day, while Groq's free tier (`llama-3.1-8b-instant`) gives ~30 req/min, high TPM, and very low latency (LPU inference) — a better fit for a small JSON-extraction task that shouldn't get stuck behind rate limits. Gemini (`gemini-2.5-flash-lite`) is kept as the second, independent-infra fallback. Final fallback is still the Phase 2 manual form (`DescribeJob.jsx`), always available per §4.5. |
+| 3 | Semantic matching (vocabulary-mismatch fallback) | ✅ `backend/app/semantic_match.py`. **Deviation (disclosed):** uses the taxonomy's existing synonym map + stdlib `difflib` lexical similarity instead of `sentence-transformers`/`all-MiniLM-L6-v2` — the real embedding model needs `torch` (~800MB+), which doesn't fit Render's 512MB free-tier RAM and would cause slow/failing cold starts (the exact "stuck" failure mode this phase is trying to avoid). Upgrade path documented in the file for when a bigger instance is available. |
+| 3 | Frontend free-text input wired into Phase 2 filter | ✅ New "freetext" step at the top of `DescribeJob.jsx` (`src/lib/llmClient.js` calls the backend) — pre-fills crop/operation/land, farmer reviews/edits in the existing wizard steps, then flows into the same `runRulesFilter` (§6.3) as before. Skipping the free-text step or any LLM failure drops straight into the unchanged manual wizard. |
 | 4 | LightGBM ranking model (synthetic data) | ⬜ |
 | 4 | Realtime booking status + FCM notifications | ⬜ |
 | 5 | Polish, retrain on real data, deploy | ⬜ |
 
+**Phase 3 setup required before this works end-to-end (not yet done by the AI session, needs human action):**
+1. Get a free Groq API key (https://console.groq.com/keys) and optionally a Gemini key (https://aistudio.google.com/apikey).
+2. Deploy `/backend` to Render (see `backend/README.md`) — free tier, using `backend/render.yaml` as a Blueprint.
+3. Set `VITE_BACKEND_URL` in the frontend (`.env.local` for dev, Vercel env vars for prod) to the deployed Render URL.
+Until step 2–3 are done, the free-text step gracefully no-ops (see `llmClient.js`) and the app behaves exactly as it did at the end of Phase 2.
+
 **Rule:** Don't start a phase-N item until all phase-(N-1) items are ⬜→✅. This keeps each AI session scoped to one working slice.
 
-**Architecture deviation (Phases 1–2):** No FastAPI backend has been built yet. The React frontend talks directly to Supabase (Postgres + Auth) via the JS client, relying on Postgres RLS policies for access control — there's no `/backend` service on Render yet, so the §5.3 API endpoint table hasn't been implemented as literal routes. This is fine for CRUD + rules-filtering (client-side, taxonomy-driven, no secrets involved), but **Phase 3 will need a real backend**, since LLM API keys (Gemini/Groq) can't safely live in frontend code, and Phase 4's LightGBM model needs a server to load and serve it. Stand up the FastAPI service on Render at the start of Phase 3.
+**Architecture deviation (Phases 1–2, resolved in Phase 3):** No FastAPI backend existed for Phases 1–2 — the frontend talked directly to Supabase (Postgres + Auth) via the JS client, relying on Postgres RLS. That's still true for all CRUD + rules-filtering (equipment, bookings, requirements rows) — those are unchanged and still go straight to Supabase from the frontend. Phase 3 added the **first** backend route (`/backend`, FastAPI on Render free tier) but scoped it to exactly one job: `POST /requirements/parse` for LLM free-text parsing, since that's the one thing that genuinely needs a server (API keys can't live in frontend code). The rest of the §5.3 endpoint table is still not implemented as literal routes — Phase 4's LightGBM model will be the next thing that needs the backend to grow.
 
 ---
 

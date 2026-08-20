@@ -1,17 +1,22 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, MapPin, Radar, Check, LocateFixed } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin, Radar, Check, LocateFixed, Sparkles, Loader2, PenLine } from "lucide-react";
 import taxonomy from "../data/taxonomy.json";
 import { Button, Chip } from "../components/ui/Primitives.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { runRulesFilter } from "../lib/rulesFilter.js";
+import { parseRequirementFreeText } from "../lib/llmClient.js";
 
 const crops = taxonomy.crops;
 const operations = taxonomy.operations;
 
-const STEP_KEYS = ["crop", "operation", "land", "location", "date", "review"];
+// Phase 3: "freetext" is a new first step — describe the job in your own words
+// and the LLM (via backend) pre-fills crop/operation/land. If it's skipped, or
+// the LLM path is unavailable, the rest of the wizard (Phase 2, unchanged)
+// still works exactly as before — §4.5 "must always work independently of LLM uptime".
+const STEP_KEYS = ["freetext", "crop", "operation", "land", "location", "date", "review"];
 
 function StepShell({ title, sub, children }) {
   return (
@@ -35,6 +40,9 @@ export default function DescribeJob() {
   const [step, setStep] = useState(0);
   const [scanning, setScanning] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [freeText, setFreeText] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [parseNotice, setParseNotice] = useState(null); // { ok: bool, message: string }
   const [form, setForm] = useState({
     crop: "wheat",
     operation: "harvesting",
@@ -42,12 +50,14 @@ export default function DescribeJob() {
     location: "",
     date: "",
     notes: "",
+    llmProviderUsed: null, // set when Phase 3 free-text parse succeeded
   });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const canNext = useMemo(() => {
     switch (STEP_KEYS[step]) {
+      case "freetext": return true; // optional — "Skip, I'll fill manually" always available
       case "crop": return !!form.crop;
       case "operation": return !!form.operation;
       case "land": return form.land > 0;
@@ -63,6 +73,47 @@ export default function DescribeJob() {
   };
   const goBack = () => (step > 0 ? setStep(step - 1) : navigate("/"));
 
+  // Phase 3: LLM free-text parse (§6.1). Always falls through to the manual
+  // wizard on any failure — see llmClient.js and §4.5.
+  const handleFreeTextSubmit = async () => {
+    if (!freeText.trim()) {
+      setStep(1); // nothing typed — just go to manual crop step
+      return;
+    }
+    setParsing(true);
+    setParseNotice(null);
+    const result = await parseRequirementFreeText(freeText.trim(), "auto");
+    setParsing(false);
+
+    if (!result) {
+      setParseNotice({
+        ok: false,
+        message: "Couldn't reach the AI parser right now — no problem, just fill in the steps below.",
+      });
+      setStep(1);
+      return;
+    }
+
+    const cropValid = result.crop && crops.some((c) => c.id === result.crop);
+    const opValid = result.operation && operations.some((o) => o.id === result.operation);
+
+    setForm((f) => ({
+      ...f,
+      crop: cropValid ? result.crop : f.crop,
+      operation: opValid ? result.operation : f.operation,
+      land: result.area_acres && result.area_acres > 0 ? result.area_acres : f.land,
+      llmProviderUsed: result.provider_used,
+    }));
+
+    setParseNotice({
+      ok: true,
+      message: opValid
+        ? "Got it — pre-filled below from your description. Check each step and adjust anything that's off."
+        : "Understood most of it — please confirm the operation below.",
+    });
+    setStep(1);
+  };
+
   const submit = async () => {
     setSubmitError(null);
     localStorage.setItem("kisan_job", JSON.stringify(form));
@@ -75,7 +126,12 @@ export default function DescribeJob() {
       area_acres: form.land,
       operation: form.operation,
     };
-    const raw_text = `${opLabel} for ${form.land} acres of ${cropLabel} near ${form.location}, needed ${form.date}. ${form.notes || ""}`.trim();
+    // If the farmer used the Phase 3 free-text step, keep their original wording as
+    // raw_text (more useful for future retraining / review) — otherwise synthesize it.
+    const raw_text = (
+      freeText.trim() ||
+      `${opLabel} for ${form.land} acres of ${cropLabel} near ${form.location}, needed ${form.date}. ${form.notes || ""}`
+    ).trim();
 
     try {
       // 1. Save the structured requirement (manual-form path — §6.1 fallback, always available)
@@ -140,6 +196,59 @@ export default function DescribeJob() {
       )}
 
       <AnimatePresence mode="wait">
+        {STEP_KEYS[step] === "freetext" && (
+          <StepShell
+            key="freetext"
+            title="Describe your job, in your own words"
+            sub="English, Hindi, Marathi, or mixed — however you'd normally say it. Or skip and fill it in step by step."
+          >
+            <div className="relative">
+              <Sparkles className="pointer-events-none absolute left-4 top-4 text-wheat/60" size={18} />
+              <textarea
+                value={freeText}
+                onChange={(e) => setFreeText(e.target.value)}
+                placeholder="e.g. Mujhe 5 acre kapas ki jotai karni hai agle hafte…"
+                rows={4}
+                disabled={parsing}
+                className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-paper placeholder:text-paper/30 focus:border-wheat disabled:opacity-50"
+              />
+            </div>
+
+            {parseNotice && (
+              <div
+                className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
+                  parseNotice.ok
+                    ? "border-moss-light/30 bg-moss-light/10 text-moss-light"
+                    : "border-white/10 bg-white/[0.03] text-paper/60"
+                }`}
+              >
+                {parseNotice.message}
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <Button variant="primary" onClick={handleFreeTextSubmit} disabled={parsing}>
+                {parsing ? (
+                  <>
+                    <Loader2 className="animate-spin" size={16} /> Understanding your job…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} /> {freeText.trim() ? "Parse with AI" : "Continue"}
+                  </>
+                )}
+              </Button>
+              <button
+                onClick={() => setStep(1)}
+                disabled={parsing}
+                className="flex items-center gap-1.5 text-sm font-medium text-paper/50 hover:text-paper disabled:opacity-40"
+              >
+                <PenLine size={14} /> Skip, I'll fill it in manually
+              </button>
+            </div>
+          </StepShell>
+        )}
+
         {STEP_KEYS[step] === "crop" && (
           <StepShell key="crop" title="What are you growing?" sub="This helps us match equipment built for your crop.">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -260,6 +369,11 @@ export default function DescribeJob() {
 
         {STEP_KEYS[step] === "review" && (
           <StepShell key="review" title="Review your job" sub="We'll match this against nearby equipment.">
+            {form.llmProviderUsed && (
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-wheat/20 bg-wheat/5 px-4 py-2.5 text-xs text-wheat">
+                <Sparkles size={13} /> Pre-filled from your description ({form.llmProviderUsed}) — double-check before continuing.
+              </div>
+            )}
             <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
               {[
                 ["Crop", crops.find((c) => c.id === form.crop)?.label],
