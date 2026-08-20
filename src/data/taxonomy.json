@@ -1,4 +1,5 @@
 {
+  "_synonyms_note": "The 'synonyms' map below (regional/informal term -> canonical taxonomy id) is built from general knowledge of common Hindi/Hinglish agricultural vocabulary, NOT verified against a linguistic corpus or real farmer input — colloquial terms vary a lot by state/district (Punjabi, Marathi, Bhojpuri, etc. all differ from each other and from this list). Treat it as a starting point and expand it as real usage/feedback surfaces missing terms — see backend/app/llm_service.py, which feeds this map straight into the LLM prompt.",
   "crops": [
     { "id": "cotton", "label": "Cotton", "icon": "☁️" },
     { "id": "wheat", "label": "Wheat", "icon": "🌾" },
@@ -51,33 +52,76 @@
     "jotai": "ploughing",
     "jutai": "ploughing",
     "nangar": "ploughing",
-    "katai": "harvesting",
-    "kataai": "harvesting",
+    "hal jotna": "ploughing",
+    "hal chalana": "ploughing",
+    "jot": "ploughing",
+
+    "godai": "tilling",
+    "jutayi": "tilling",
+
+    "vakhar": "harrowing",
+    "patela": "harrowing",
+
     "bijai": "sowing",
     "bijayi": "sowing",
     "boai": "sowing",
-    "godai": "tilling",
-    "dawani": "threshing",
-    "gahai": "threshing",
+    "beej boana": "sowing",
+    "bowani": "sowing",
+
     "chidkav": "spraying",
     "spray": "spraying",
     "dawai": "spraying",
+    "dawa chidakna": "spraying",
+    "keetnashak": "spraying",
+
+    "katai": "harvesting",
+    "kataai": "harvesting",
+    "fasal katna": "harvesting",
+    "harvest": "harvesting",
+
+    "dawani": "threshing",
+    "gahai": "threshing",
+    "mahai": "threshing",
+
+    "dhulai": "transportation",
+    "gaadi se ledana": "transportation",
+
+    "leveling": "land_leveling",
+    "zameen samtal": "land_leveling",
+    "patta lagana": "land_leveling",
+
     "sinchai": "irrigation",
     "paani": "irrigation",
+    "paani dena": "irrigation",
+    "abpashi": "irrigation",
+
     "gaadi": "trailer",
     "trolley": "trailer",
     "rotavetor": "rotavator",
+    "rotawator": "rotavator",
+    "kalti": "cultivator",
+    "hal": "plough",
+
     "kapas": "cotton",
+    "rui": "cotton",
     "gehun": "wheat",
+    "gehu": "wheat",
     "ganna": "sugarcane",
+    "ganne": "sugarcane",
     "chawal": "rice",
     "dhaan": "rice",
+    "paddy": "rice",
     "makka": "maize",
+    "bhutta": "maize",
     "bhuimug": "groundnut",
     "moongfali": "groundnut",
+    "singdana": "groundnut",
     "pyaz": "onion",
     "kanda": "onion",
     "chana": "gram",
-    "tur dal": "tur"
+    "channa": "gram",
+    "tur dal": "tur",
+    "arhar": "tur"
   }
 }
+
