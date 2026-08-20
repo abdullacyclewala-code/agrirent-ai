@@ -52,7 +52,7 @@ create table if not exists public.taxonomy_crops (
 create table if not exists public.taxonomy_operations (
   id text primary key,
   label text not null,
-  desc text
+  description text
 );
 
 create table if not exists public.taxonomy_equipment_types (

@@ -13,7 +13,7 @@ insert into public.taxonomy_crops (id, label, icon) values
   ('gram','Gram / Chickpea','🫛')
 on conflict (id) do nothing;
 
-insert into public.taxonomy_operations (id, label, desc) values
+insert into public.taxonomy_operations (id, label, description) values
   ('ploughing','Ploughing','Turn and loosen soil before sowing'),
   ('tilling','Tilling','Break up and mix soil for planting'),
   ('harrowing','Harrowing','Smooth and level tilled soil'),
