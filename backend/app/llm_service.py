@@ -66,9 +66,13 @@ class LLMAllProvidersFailed(Exception):
     pass
 
 
-def _system_prompt(vocab: dict) -> str:
+def _system_prompt(vocab: dict, synonyms: dict) -> str:
     # §6.1: system prompt includes the full allowed vocabulary and instructs
     # JSON-only output matching the exact shape.
+    # Also inject the known regional-term synonym map (§3.1) directly, since
+    # testing showed the model will otherwise guess wrong on terms it hasn't
+    # reliably memorized (e.g. "jotai" -> misread as sowing instead of ploughing).
+    synonym_lines = "\n".join(f'- "{term}" means "{canon}"' for term, canon in synonyms.items())
     return (
         "You extract structured farming-job data from a farmer's free-text message. "
         "The farmer may write in English, Hindi, Marathi, or Hinglish (mixed/romanized). "
@@ -81,8 +85,11 @@ def _system_prompt(vocab: dict) -> str:
         f"equipment_type MUST be one of: {vocab['equipment_types']}, or null if it can be "
         "inferred from the operation alone.\n"
         "area_acres is a plain number (convert hectares/bigha to acres if mentioned; 1 hectare "
-        "= 2.47 acres). Use null if no land size is mentioned.\n"
-        "If the farmer uses a regional/informal word you don't recognize, still pick your best "
+        "= 2.47 acres). Use null if no land size is mentioned.\n\n"
+        "Known regional/informal terms — use these exact mappings whenever one appears "
+        "in the farmer's text, they are NOT guesses:\n"
+        f"{synonym_lines}\n\n"
+        "If the farmer uses a regional/informal word not in the list above, still pick your best "
         "guess from the allowed lists above — do not invent new vocabulary."
     )
 
@@ -175,7 +182,7 @@ def _call_gemini(system_prompt: str, raw_text: str) -> Optional[dict]:
 
 def parse_requirement_via_llm(raw_text: str, language: Optional[str], taxonomy: dict) -> dict:
     vocab = allowed_vocab_lists(taxonomy)
-    system_prompt = _system_prompt(vocab)
+    system_prompt = _system_prompt(vocab, taxonomy.get("synonyms", {}))
 
     provider_used = None
     parsed = _call_groq(system_prompt, raw_text)
