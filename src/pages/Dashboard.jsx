@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ArrowUpRight, Sparkles, Tractor, Radar } from "lucide-react";
 import FieldScene from "../three/FieldScene.jsx";
 import { Button, Reveal, SectionLabel } from "../components/ui/Primitives.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const steps = [
   {
@@ -26,6 +27,9 @@ const steps = [
 ];
 
 export default function Dashboard() {
+  const { profile } = useAuth();
+  const isOwnerMode = profile?.is_owner && !profile?.is_farmer;
+
   return (
     <main className="grain">
       {/* ---------------- HERO ---------------- */}
@@ -60,9 +64,9 @@ export default function Dashboard() {
               transition={{ duration: 0.7, delay: 0.25 }}
               className="mt-8 flex flex-wrap gap-3"
             >
-              <Link to="/describe-job">
+              <Link to={isOwnerMode ? "/equipment/new" : "/describe-job"}>
                 <Button variant="primary">
-                  Describe your job <ArrowUpRight size={16} />
+                  {isOwnerMode ? "List your equipment" : "Describe your job"} <ArrowUpRight size={16} />
                 </Button>
               </Link>
             </motion.div>

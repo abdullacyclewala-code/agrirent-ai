@@ -2,8 +2,14 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, MapPin, Radar, Check, LocateFixed } from "lucide-react";
-import { crops, operations } from "../data/mockData.js";
+import taxonomy from "../data/taxonomy.json";
 import { Button, Chip } from "../components/ui/Primitives.jsx";
+import { supabase } from "../lib/supabase.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { runRulesFilter } from "../lib/rulesFilter.js";
+
+const crops = taxonomy.crops;
+const operations = taxonomy.operations;
 
 const STEP_KEYS = ["crop", "operation", "land", "location", "date", "review"];
 
@@ -25,8 +31,10 @@ function StepShell({ title, sub, children }) {
 
 export default function DescribeJob() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [scanning, setScanning] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   const [form, setForm] = useState({
     crop: "wheat",
     operation: "harvesting",
@@ -55,10 +63,56 @@ export default function DescribeJob() {
   };
   const goBack = () => (step > 0 ? setStep(step - 1) : navigate("/"));
 
-  const submit = () => {
+  const submit = async () => {
+    setSubmitError(null);
     localStorage.setItem("kisan_job", JSON.stringify(form));
     setScanning(true);
-    setTimeout(() => navigate("/recommendations"), 2600);
+
+    const cropLabel = crops.find((c) => c.id === form.crop)?.label || form.crop;
+    const opLabel = operations.find((o) => o.id === form.operation)?.label || form.operation;
+    const parsed_json = {
+      crop: form.crop,
+      area_acres: form.land,
+      operation: form.operation,
+    };
+    const raw_text = `${opLabel} for ${form.land} acres of ${cropLabel} near ${form.location}, needed ${form.date}. ${form.notes || ""}`.trim();
+
+    try {
+      // 1. Save the structured requirement (manual-form path — §6.1 fallback, always available)
+      let requirementId = null;
+      if (user) {
+        const { data: reqRow, error: reqErr } = await supabase
+          .from("requirements")
+          .insert({ farmer_id: user.id, raw_text, language: "en", parsed_json })
+          .select()
+          .single();
+        if (reqErr) throw reqErr;
+        requirementId = reqRow.id;
+      }
+
+      // 2. Fetch equipment + run the rules-engine hard filter (§6.3)
+      const { data: equipmentRows, error: eqErr } = await supabase
+        .from("equipment")
+        .select("*, users:owner_id ( name )");
+      if (eqErr) throw eqErr;
+
+      const normalized = (equipmentRows || []).map((row) => ({
+        ...row,
+        owner_name: row.users?.name || "Owner",
+      }));
+
+      const { results, relaxedHp } = runRulesFilter(normalized, parsed_json, user?.id);
+
+      sessionStorage.setItem(
+        "kisan_matches",
+        JSON.stringify({ requirementId, requirement: { ...form, parsed_json }, results, relaxedHp })
+      );
+
+      setTimeout(() => navigate("/recommendations"), 1800);
+    } catch (err) {
+      setScanning(false);
+      setSubmitError(err.message || "Something went wrong finding matches. Please try again.");
+    }
   };
 
   if (scanning) return <ScanningScreen form={form} />;
@@ -78,6 +132,12 @@ export default function DescribeJob() {
           </div>
         ))}
       </div>
+
+      {submitError && (
+        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+          {submitError}
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {STEP_KEYS[step] === "crop" && (
@@ -188,11 +248,6 @@ export default function DescribeJob() {
               onChange={(e) => set("date", e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-paper focus:border-wheat [color-scheme:dark]"
             />
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["Today", "Tomorrow", "This weekend"].map((d) => (
-                <Chip key={d} active={false} onClick={() => set("date", d)}>{d}</Chip>
-              ))}
-            </div>
             <textarea
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
@@ -240,8 +295,8 @@ function ScanningScreen({ form }) {
   const messages = [
     "Reading your job details…",
     "Scanning equipment within range…",
-    "Scoring soil & crop compatibility…",
-    "Ranking by fit, distance & price…",
+    "Checking crop & operation fit…",
+    "Ranking by fit and price…",
   ];
   const [msgIndex, setMsgIndex] = useState(0);
   useEffect(() => {
@@ -249,7 +304,7 @@ function ScanningScreen({ form }) {
     const id = setInterval(() => {
       i = Math.min(i + 1, messages.length - 1);
       setMsgIndex(i);
-    }, 620);
+    }, 400);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -7,17 +7,17 @@
 
 ## 0. STATUS *(update this every session)*
 
-**Phase:** 1 — Foundation
-**Currently building:** Phase 1 done — next up is Phase 2 (Equipment CRUD, rules filter, manual booking flow)
+**Phase:** 2 — Core marketplace loop
+**Currently building:** Phase 2 done — next up is Phase 3 (LLM free-text parsing + semantic matching, wired into the Phase 2 filter)
 
 | Phase | Item | Status |
 |---|---|---|
 | 1 | Knowledge base (crops/ops/equipment taxonomy) | ✅ `src/data/taxonomy.json` + `supabase/seed_taxonomy.sql` |
 | 1 | DB schema created (Supabase/Postgres) | ✅ `supabase/schema.sql` (run in Supabase SQL editor, then seed_taxonomy.sql) |
 | 1 | Auth + role switching (farmer↔owner) | ✅ Email/password auth (Supabase Auth) + role toggle in navbar. NOTE: doc originally specced phone/OTP — switched to email/password for MVP since OTP needs a paid SMS provider (Twilio) wired into Supabase. Swap later if needed. |
-| 2 | Equipment CRUD (owner side) | ⬜ |
-| 2 | Rules-based filter (hard compatibility) | ⬜ |
-| 2 | Basic booking flow (no ML/LLM yet, manual form input) | ⬜ |
+| 2 | Equipment CRUD (owner side) | ✅ `AddEquipment.jsx` (create/edit) + "My Listings" tab in `Profile.jsx` (list/pause/delete). Deviation: no image upload yet — Supabase Storage bucket isn't set up; equipment shows illustrated art instead of photos. |
+| 2 | Rules-based filter (hard compatibility) | ✅ `src/lib/rulesFilter.js` implements §6.3 (equipment_type, operation, crop, HP range, availability, excludes own listings). Deviation: no geo distance filtering yet — Mapbox/PostGIS isn't wired up, so `service_area_radius_km` isn't enforced. Matching/ranking score is a simple rules-based heuristic, explicitly a placeholder for the real Phase 4 LightGBM ranker. |
+| 2 | Basic booking flow (no ML/LLM yet, manual form input) | ✅ `DescribeJob.jsx` → real `requirements` row → `Recommendations.jsx` (real filtered equipment) → `EquipmentDetails.jsx` (real booking creation, with availability + double-booking re-check per §4.5) → `Booking.jsx` (real status tracking + owner accept/reject/mark-in-use/complete, farmer cancel) → `MyBookings.jsx` (new — also fixes a dead `/bookings` nav link from Phase 1). Deviation: no `availability_slots` calendar yet — booking conflict check is a simple date-overlap query against existing Confirmed/In Use bookings on the same equipment, not a full slot system. |
 | 3 | LLM requirement parsing (Gemini/Groq + fallback) | ⬜ |
 | 3 | Semantic matching (sentence-transformers) | ⬜ |
 | 4 | LightGBM ranking model (synthetic data) | ⬜ |
@@ -25,6 +25,8 @@
 | 5 | Polish, retrain on real data, deploy | ⬜ |
 
 **Rule:** Don't start a phase-N item until all phase-(N-1) items are ⬜→✅. This keeps each AI session scoped to one working slice.
+
+**Architecture deviation (Phases 1–2):** No FastAPI backend has been built yet. The React frontend talks directly to Supabase (Postgres + Auth) via the JS client, relying on Postgres RLS policies for access control — there's no `/backend` service on Render yet, so the §5.3 API endpoint table hasn't been implemented as literal routes. This is fine for CRUD + rules-filtering (client-side, taxonomy-driven, no secrets involved), but **Phase 3 will need a real backend**, since LLM API keys (Gemini/Groq) can't safely live in frontend code, and Phase 4's LightGBM model needs a server to load and serve it. Stand up the FastAPI service on Render at the start of Phase 3.
 
 ---
 

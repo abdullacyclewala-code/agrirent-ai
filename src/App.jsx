@@ -5,7 +5,9 @@ import Dashboard from "./pages/Dashboard.jsx";
 import DescribeJob from "./pages/DescribeJob.jsx";
 import Recommendations from "./pages/Recommendations.jsx";
 import EquipmentDetails from "./pages/EquipmentDetails.jsx";
+import AddEquipment from "./pages/AddEquipment.jsx";
 import Booking from "./pages/Booking.jsx";
+import MyBookings from "./pages/MyBookings.jsx";
 import Profile from "./pages/Profile.jsx";
 import Auth from "./pages/Auth.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -59,7 +61,10 @@ export default function App() {
           <Route path="/describe-job" element={<ProtectedRoute><PageTransition><DescribeJob /></PageTransition></ProtectedRoute>} />
           <Route path="/recommendations" element={<ProtectedRoute><PageTransition><Recommendations /></PageTransition></ProtectedRoute>} />
           <Route path="/equipment/:id" element={<ProtectedRoute><PageTransition><EquipmentDetails /></PageTransition></ProtectedRoute>} />
+          <Route path="/equipment/new" element={<ProtectedRoute><PageTransition><AddEquipment /></PageTransition></ProtectedRoute>} />
+          <Route path="/equipment/:id/edit" element={<ProtectedRoute><PageTransition><AddEquipment /></PageTransition></ProtectedRoute>} />
           <Route path="/booking/:id" element={<ProtectedRoute><PageTransition><Booking /></PageTransition></ProtectedRoute>} />
+          <Route path="/bookings" element={<ProtectedRoute><PageTransition><MyBookings /></PageTransition></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><PageTransition><Profile /></PageTransition></ProtectedRoute>} />
         </Routes>
       </AnimatePresence>

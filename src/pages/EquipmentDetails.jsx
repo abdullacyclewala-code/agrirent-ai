@@ -1,59 +1,167 @@
-import { useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { MapPin, ShieldCheck, Star, ChevronLeft, PhoneCall, MessageCircle } from "lucide-react";
-import { equipmentList } from "../data/mockData.js";
+import { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { MapPin, ChevronLeft } from "lucide-react";
+import { supabase } from "../lib/supabase.js";
+import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Badge, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
+import { artCategoryFor, equipmentTypeLabel, operationLabel, cropLabel } from "../lib/equipmentDisplay.js";
 
 export default function EquipmentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const eq = equipmentList.find((e) => e.id === id) || equipmentList[0];
-  const [galleryIndex, setGalleryIndex] = useState(0);
-  const similar = equipmentList.filter((e) => e.category === eq.category && e.id !== eq.id).slice(0, 3);
+  const { user } = useAuth();
 
-  const startBooking = () => navigate("/booking/bk-1042");
+  const [eq, setEq] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [booking, setBooking] = useState(false);
+  const [bookError, setBookError] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from("equipment")
+        .select("*, users:owner_id ( name )")
+        .eq("id", id)
+        .single();
+      if (error || !data) {
+        setNotFound(true);
+      } else {
+        setEq(data);
+      }
+      setLoading(false);
+    })();
+  }, [id]);
+
+  const isOwnListing = eq && user && eq.owner_id === user.id;
+
+  const requestBooking = async () => {
+    if (!startDate || !endDate) {
+      setBookError("Pick a start and end date.");
+      return;
+    }
+    if (new Date(endDate) < new Date(startDate)) {
+      setBookError("End date can't be before the start date.");
+      return;
+    }
+    setBooking(true);
+    setBookError(null);
+
+    // Edge case §4.5: re-check availability + overlapping confirmed/in-use bookings
+    // right before confirming, not just at search time.
+    const { data: freshEq, error: freshErr } = await supabase
+      .from("equipment")
+      .select("is_available")
+      .eq("id", id)
+      .single();
+    if (freshErr || !freshEq?.is_available) {
+      setBookError("This equipment is no longer available.");
+      setBooking(false);
+      return;
+    }
+
+    const { data: conflicts, error: conflictErr } = await supabase
+      .from("bookings")
+      .select("id, start_date, end_date, status")
+      .eq("equipment_id", id)
+      .in("status", ["Confirmed", "In Use"]);
+    if (conflictErr) {
+      setBookError("Couldn't check availability. Try again.");
+      setBooking(false);
+      return;
+    }
+    const overlap = (conflicts || []).some(
+      (b) => b.start_date <= endDate && b.end_date >= startDate
+    );
+    if (overlap) {
+      setBookError("Those dates are already booked. Pick different dates.");
+      setBooking(false);
+      return;
+    }
+
+    const { data: newBooking, error: bookErr } = await supabase
+      .from("bookings")
+      .insert({
+        equipment_id: eq.id,
+        farmer_id: user.id,
+        owner_id: eq.owner_id,
+        status: "Requested",
+        start_date: startDate,
+        end_date: endDate,
+        price: eq.price,
+      })
+      .select()
+      .single();
+
+    setBooking(false);
+    if (bookErr) {
+      setBookError(bookErr.message || "Couldn't create the booking. Try again.");
+      return;
+    }
+    navigate(`/booking/${newBooking.id}`);
+  };
+
+  if (loading) {
+    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">Loading…</div>;
+  }
+  if (notFound || !eq) {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+        <p className="text-paper/60">This listing doesn't exist or was removed.</p>
+        <Button variant="outline" onClick={() => navigate("/recommendations")}>Back to matches</Button>
+      </div>
+    );
+  }
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-28 pt-6 md:px-8 md:pb-16 md:pt-10">
       <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-paper/50 hover:text-paper">
-        <ChevronLeft size={16} /> Back to matches
+        <ChevronLeft size={16} /> Back
       </button>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[1.3fr_1fr]">
         {/* gallery */}
         <div className="min-w-0">
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10">
-            <EquipmentArt category={eq.category} className="h-full w-full" />
+            <EquipmentArt category={artCategoryFor(eq.equipment_type)} className="h-full w-full" />
             <div className="absolute left-4 top-4 flex gap-2">
-              {eq.verified && <Badge tone="sky"><ShieldCheck size={11} /> Verified owner</Badge>}
-              <Badge tone="leaf">{eq.availableFrom}</Badge>
+              <Badge tone={eq.is_available ? "leaf" : "rust"}>{eq.is_available ? "Available" : "Paused"}</Badge>
             </div>
-          </div>
-          <div className="mt-3 flex gap-2">
-            {eq.gallery.map((g, i) => (
-              <button
-                key={g + i}
-                onClick={() => setGalleryIndex(i)}
-                className={`h-16 w-20 shrink-0 overflow-hidden rounded-xl border transition-colors ${
-                  galleryIndex === i ? "border-wheat" : "border-white/10 opacity-60 hover:opacity-100"
-                }`}
-              >
-                <EquipmentArt category={eq.category} className="h-full w-full" />
-              </button>
-            ))}
           </div>
 
           <Reveal className="mt-10">
             <h2 className="font-display text-lg font-semibold text-paper">Specifications</h2>
             <div className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.02] font-mono text-sm">
-              {Object.entries(eq.specs).map(([k, v]) => (
-                <div key={k} className="flex justify-between px-5 py-3">
-                  <span className="text-paper/45">{k}</span>
-                  <span className="text-paper">{v}</span>
+              <div className="flex justify-between px-5 py-3">
+                <span className="text-paper/45">Type</span>
+                <span className="text-paper">{equipmentTypeLabel(eq.equipment_type)}</span>
+              </div>
+              {eq.hp != null && (
+                <div className="flex justify-between px-5 py-3">
+                  <span className="text-paper/45">Horsepower</span>
+                  <span className="text-paper">{eq.hp} HP</span>
                 </div>
-              ))}
+              )}
+              <div className="flex justify-between px-5 py-3">
+                <span className="text-paper/45">Operations</span>
+                <span className="text-paper text-right">
+                  {(eq.compatible_operations || []).map(operationLabel).join(", ") || "—"}
+                </span>
+              </div>
+              <div className="flex justify-between px-5 py-3">
+                <span className="text-paper/45">Crops</span>
+                <span className="text-paper text-right">
+                  {(eq.compatible_crops || []).map(cropLabel).join(", ") || "Any crop"}
+                </span>
+              </div>
+              <div className="flex justify-between px-5 py-3">
+                <span className="text-paper/45">Service radius</span>
+                <span className="text-paper">{eq.service_area_radius_km} km</span>
+              </div>
             </div>
           </Reveal>
 
@@ -61,97 +169,78 @@ export default function EquipmentDetails() {
             <h2 className="font-display text-lg font-semibold text-paper">Owner</h2>
             <div className="mt-4 flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-wheat/20 font-display text-lg font-bold text-wheat">
-                {eq.owner.charAt(0)}
+                {(eq.users?.name || "O").charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <div className="font-medium text-paper">{eq.owner}</div>
-                <div className="flex items-center gap-1 text-xs text-paper/50">
-                  <Star size={12} className="text-wheat" fill="currentColor" /> {eq.ownerRating} · {eq.ownerBookings} bookings
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-paper/70 hover:border-white/30">
-                  <PhoneCall size={16} />
-                </button>
-                <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-paper/70 hover:border-white/30">
-                  <MessageCircle size={16} />
-                </button>
+                <div className="font-medium text-paper">{eq.users?.name || "Owner"}</div>
+                {eq.location_label && (
+                  <div className="flex items-center gap-1 text-xs text-paper/50"><MapPin size={12} /> {eq.location_label}</div>
+                )}
               </div>
             </div>
           </Reveal>
-
-          {similar.length > 0 && (
-            <Reveal delay={0.15} className="mt-10 min-w-0">
-              <h2 className="font-display text-lg font-semibold text-paper">Similar equipment</h2>
-              <div className="mt-4 flex w-full gap-4 overflow-x-auto pb-2">
-                {similar.map((s) => (
-                  <Link
-                    key={s.id}
-                    to={`/equipment/${s.id}`}
-                    className="w-52 shrink-0 rounded-2xl border border-white/10 bg-white/[0.03] p-3 hover:border-wheat/30"
-                  >
-                    <div className="h-28 overflow-hidden rounded-xl">
-                      <EquipmentArt category={s.category} className="h-full w-full" />
-                    </div>
-                    <div className="mt-2 truncate text-sm font-medium text-paper">{s.name}</div>
-                    <div className="text-xs text-paper/45">₹{s.price}/{s.priceUnit} · {s.distance} km</div>
-                  </Link>
-                ))}
-              </div>
-            </Reveal>
-          )}
         </div>
 
-        {/* sticky booking panel */}
-        <div className="hidden md:block">
+        {/* booking panel */}
+        <div>
           <div className="sticky top-24 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <span className="font-mono text-[11px] uppercase tracking-wide text-moss-light">{eq.category} · {eq.power}</span>
+            <span className="font-mono text-[11px] uppercase tracking-wide text-moss-light">
+              {equipmentTypeLabel(eq.equipment_type)}{eq.hp ? ` · ${eq.hp} HP` : ""}
+            </span>
             <h1 className="mt-1 font-display text-2xl font-bold text-paper">{eq.name}</h1>
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-paper/55">
-              <MapPin size={14} /> {eq.location} · {eq.distance} km away
-            </p>
+            {eq.location_label && (
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-paper/55">
+                <MapPin size={14} /> {eq.location_label}
+              </p>
+            )}
 
             <div className="mt-5 flex items-baseline gap-1 border-y border-white/10 py-5">
               <span className="font-display text-3xl font-bold text-wheat">₹{eq.price}</span>
-              <span className="text-paper/50">/ {eq.priceUnit}</span>
+              <span className="text-paper/50">/ {eq.price_unit}</span>
             </div>
 
-            <div className="mt-5">
-              <div className="mb-2 font-mono text-xs uppercase tracking-wide text-paper/40">Next available</div>
-              <div className="flex flex-wrap gap-2">
-                {["Today", "Tomorrow", "Oct 12", "Oct 13"].map((d, i) => (
-                  <span
-                    key={d}
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                      i === 0 ? "bg-wheat text-ink" : "bg-white/5 text-paper/60"
-                    }`}
-                  >
-                    {d}
-                  </span>
-                ))}
-              </div>
-            </div>
+            {isOwnListing ? (
+              <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-paper/50">
+                This is your own listing.
+              </p>
+            ) : !eq.is_available ? (
+              <p className="mt-6 rounded-xl border border-rust/30 bg-rust/10 px-4 py-3 text-center text-sm text-rust">
+                Currently paused by the owner.
+              </p>
+            ) : (
+              <>
+                <div className="mt-5 space-y-3">
+                  <div>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">Start date</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper focus:border-wheat [color-scheme:dark]"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">End date</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper focus:border-wheat [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
 
-            <Button variant="primary" className="mt-6 w-full" onClick={startBooking}>
-              Request to book
-            </Button>
-            <p className="mt-3 text-center text-xs text-paper/40">Free cancellation up to 12 hours before start</p>
+                {bookError && <p className="mt-3 text-sm text-red-400">{bookError}</p>}
+
+                <Button variant="primary" className="mt-6 w-full" onClick={requestBooking} disabled={booking}>
+                  {booking ? "Sending request…" : "Request to book"}
+                </Button>
+                <p className="mt-3 text-center text-xs text-paper/40">Owner will accept or reject your request.</p>
+              </>
+            )}
           </div>
         </div>
       </div>
-
-      {/* mobile sticky bar */}
-      <motion.div
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        className="fixed inset-x-0 bottom-16 z-30 flex items-center justify-between border-t border-white/10 bg-ink/95 px-5 py-3 backdrop-blur-xl md:hidden"
-      >
-        <div>
-          <div className="font-display text-lg font-bold text-wheat">₹{eq.price}<span className="text-xs text-paper/40">/{eq.priceUnit}</span></div>
-          <div className="text-[11px] text-paper/40">{eq.distance} km away</div>
-        </div>
-        <Button variant="primary" onClick={startBooking}>Request to book</Button>
-      </motion.div>
     </main>
   );
 }
