@@ -36,10 +36,19 @@ curl -X POST http://localhost:8000/requirements/parse \
 
 - **Groq** (primary): https://console.groq.com/keys — free tier, ~30 req/min,
   fast LPU inference, rarely rate-limited for a small JSON-extraction task like this.
+  Default model `openai/gpt-oss-20b` (Groq's recommended replacement for the
+  now-deprecated `llama-3.1-8b-instant`).
 - **Gemini** (fallback): https://aistudio.google.com/apikey — free tier as of
   early 2026 is 5–15 req/min depending on model; used only as the second
   provider in the chain, not primary (see `llm_service.py` docstring for why
-  this is flipped from the master doc's original Gemini-first spec).
+  this is flipped from the master doc's original Gemini-first spec). Default
+  model `gemini-3.5-flash-lite` (Google retired `gemini-2.5-flash-lite`).
+
+**Model names drift over time** — both providers deprecate models on their
+own schedule. If either provider starts returning 404s, check the Render
+logs for `ERROR:agrirent.llm_service:[groq|gemini]` — the error body from
+the provider names the current replacement model. Update `GROQ_MODEL` /
+`GEMINI_MODEL` in Render's env vars (no code change needed).
 
 ## Deploying to Render (free tier)
 

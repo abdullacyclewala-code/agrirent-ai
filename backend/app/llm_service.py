@@ -3,17 +3,26 @@
 
 DEVIATION FROM MASTER DOC (disclosed, per project convention of documenting
 deviations rather than hiding them): the master doc specs Gemini as primary
-and Groq as fallback. This build flips that order — Groq (llama-3.1-8b-instant)
-primary, Gemini (gemini-2.5-flash-lite) fallback — because as of the Dec 2025
-Gemini free-tier cuts, Gemini's free tier is now only 5-15 requests/minute and
-100-1,000 requests/day, while Groq's free tier gives ~30 req/min with a high
-tokens-per-minute ceiling on the 8B model and very low latency (LPU inference,
-rarely "busy"). For a short structured-JSON extraction task like this one,
-Groq is both faster and less likely to be rate-limited under real usage, so
-it's the better primary. Gemini remains a genuinely independent second
-provider (different infra, different outage domain) for the fallback slot.
-If a third-party outage report changes this calculus later, swap the order
-here — it's isolated to this one file.
+and Groq as fallback. This build flips that order — Groq primary, Gemini
+fallback — because Groq's free tier gives ~30 req/min with a high
+tokens-per-minute ceiling and very low latency (LPU inference, rarely
+"busy"), while Gemini's free tier has been repeatedly cut and is more
+restrictive (5-15 req/min, 100-1,000 req/day as of late 2025/early 2026).
+For a short structured-JSON extraction task like this one, Groq is both
+faster and less likely to be rate-limited under real usage, so it's the
+better primary. Gemini remains a genuinely independent second provider
+(different infra, different outage domain) for the fallback slot.
+
+MODEL NAMES CHANGE OVER TIME — both providers retire models on their own
+schedule (Groq deprecated `llama-3.1-8b-instant` in favor of
+`openai/gpt-oss-20b`; Google retired `gemini-2.5-flash-lite` in favor of
+`gemini-3.5-flash-lite`, discovered via a live 404 during Phase 3 testing).
+The defaults below are current as of this commit, driven by env vars
+(GROQ_MODEL / GEMINI_MODEL) so they can be swapped without a code change —
+check Render logs for `ERROR:agrirent.llm_service:[groq|gemini]` if either
+provider starts 404ing again; the error body names the correct replacement.
+If a third-party outage report changes the provider-order calculus later,
+that's isolated to this one file too.
 
 Both providers are called with a strict JSON-only system prompt built from
 the live taxonomy (§3), so the model is only ever asked to choose from real
@@ -41,11 +50,11 @@ from .semantic_match import best_match
 logger = logging.getLogger("agrirent.llm_service")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
 GEMINI_URL = (
     f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 )
