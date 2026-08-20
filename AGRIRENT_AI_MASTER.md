@@ -8,13 +8,13 @@
 ## 0. STATUS *(update this every session)*
 
 **Phase:** 1 — Foundation
-**Currently building:** _(not started yet — set this when work begins)_
+**Currently building:** Phase 1 done — next up is Phase 2 (Equipment CRUD, rules filter, manual booking flow)
 
 | Phase | Item | Status |
 |---|---|---|
-| 1 | Knowledge base (crops/ops/equipment taxonomy) | ⬜ Not started |
-| 1 | DB schema created (Supabase/Postgres) | ⬜ |
-| 1 | Auth + role switching (farmer↔owner) | ⬜ |
+| 1 | Knowledge base (crops/ops/equipment taxonomy) | ✅ `src/data/taxonomy.json` + `supabase/seed_taxonomy.sql` |
+| 1 | DB schema created (Supabase/Postgres) | ✅ `supabase/schema.sql` (run in Supabase SQL editor, then seed_taxonomy.sql) |
+| 1 | Auth + role switching (farmer↔owner) | ✅ Email/password auth (Supabase Auth) + role toggle in navbar. NOTE: doc originally specced phone/OTP — switched to email/password for MVP since OTP needs a paid SMS provider (Twilio) wired into Supabase. Swap later if needed. |
 | 2 | Equipment CRUD (owner side) | ⬜ |
 | 2 | Rules-based filter (hard compatibility) | ⬜ |
 | 2 | Basic booking flow (no ML/LLM yet, manual form input) | ⬜ |

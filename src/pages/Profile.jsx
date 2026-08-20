@@ -3,11 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ShieldCheck, MapPin, Settings, Pause, Play } from "lucide-react";
 import { profile } from "../data/mockData.js";
 import { Button, StatTile, Reveal } from "../components/ui/Primitives.jsx";
+import { useAuth } from "../context/AuthContext.jsx";
 
 const tabs = ["Overview", "My Listings", "Settings"];
 
 export default function Profile() {
   const [tab, setTab] = useState("Overview");
+  const { signOut } = useAuth();
 
   return (
     <main className="mx-auto max-w-5xl px-5 pb-16 pt-6 md:px-8 md:pt-10">
@@ -25,6 +27,7 @@ export default function Profile() {
           <p className="mt-0.5 text-xs text-paper/35">Member since {profile.memberSince}</p>
         </div>
         <Button variant="ghost"><Settings size={15} /> Edit profile</Button>
+        <Button variant="ghost" onClick={signOut}>Sign out</Button>
       </div>
 
       {/* tabs */}

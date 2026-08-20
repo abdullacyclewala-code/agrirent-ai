@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { LayoutDashboard, Sparkles, ClipboardList, UserRound, Sprout } from "lucide-react";
+import RoleToggle from "../ui/RoleToggle.jsx";
 
 const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -8,25 +8,6 @@ const navItems = [
   { to: "/bookings", label: "Bookings", icon: ClipboardList },
   { to: "/profile", label: "Profile", icon: UserRound },
 ];
-
-function RoleToggle() {
-  const [role, setRole] = useState("farmer");
-  return (
-    <div className="flex items-center rounded-full border border-white/10 bg-white/5 p-1 font-mono text-xs">
-      {["farmer", "owner"].map((r) => (
-        <button
-          key={r}
-          onClick={() => setRole(r)}
-          className={`rounded-full px-3 py-1.5 capitalize transition-colors ${
-            role === r ? "bg-wheat text-ink font-semibold" : "text-paper/50 hover:text-paper"
-          }`}
-        >
-          {r}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 export default function NavBar() {
   return (

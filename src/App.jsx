@@ -7,6 +7,9 @@ import Recommendations from "./pages/Recommendations.jsx";
 import EquipmentDetails from "./pages/EquipmentDetails.jsx";
 import Booking from "./pages/Booking.jsx";
 import Profile from "./pages/Profile.jsx";
+import Auth from "./pages/Auth.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import { useAuth } from "./context/AuthContext.jsx";
 
 function PageTransition({ children }) {
   return (
@@ -35,21 +38,32 @@ function RouteProgress({ path }) {
 
 export default function App() {
   const location = useLocation();
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-ink text-white/60 text-sm">
+        Loading…
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-ink">
       <RouteProgress path={location.pathname} />
-      <NavBar />
+      {isAuthenticated && <NavBar />}
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<PageTransition><Dashboard /></PageTransition>} />
-          <Route path="/describe-job" element={<PageTransition><DescribeJob /></PageTransition>} />
-          <Route path="/recommendations" element={<PageTransition><Recommendations /></PageTransition>} />
-          <Route path="/equipment/:id" element={<PageTransition><EquipmentDetails /></PageTransition>} />
-          <Route path="/booking/:id" element={<PageTransition><Booking /></PageTransition>} />
-          <Route path="/profile" element={<PageTransition><Profile /></PageTransition>} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/" element={<ProtectedRoute><PageTransition><Dashboard /></PageTransition></ProtectedRoute>} />
+          <Route path="/describe-job" element={<ProtectedRoute><PageTransition><DescribeJob /></PageTransition></ProtectedRoute>} />
+          <Route path="/recommendations" element={<ProtectedRoute><PageTransition><Recommendations /></PageTransition></ProtectedRoute>} />
+          <Route path="/equipment/:id" element={<ProtectedRoute><PageTransition><EquipmentDetails /></PageTransition></ProtectedRoute>} />
+          <Route path="/booking/:id" element={<ProtectedRoute><PageTransition><Booking /></PageTransition></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><PageTransition><Profile /></PageTransition></ProtectedRoute>} />
         </Routes>
       </AnimatePresence>
-      <div className="h-16 md:hidden" />
+      {isAuthenticated && <div className="h-16 md:hidden" />}
     </div>
   );
 }
