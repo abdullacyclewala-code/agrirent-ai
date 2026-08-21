@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, useLocation } from "react-router-dom";
+import { Bell } from "lucide-react";
 import NavBar from "./components/layout/NavBar.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import DescribeJob from "./pages/DescribeJob.jsx";
@@ -12,6 +14,7 @@ import Profile from "./pages/Profile.jsx";
 import Auth from "./pages/Auth.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
+import { listenForForegroundMessages } from "./lib/push.js";
 
 function PageTransition({ children }) {
   return (
@@ -41,6 +44,27 @@ function RouteProgress({ path }) {
 export default function App() {
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
+  const [pushToast, setPushToast] = useState(null);
+
+  // Phase 4 — surface FCM messages that arrive while the tab is open. Only
+  // ever fires if the person opted in via Profile > Settings and Firebase is
+  // configured (see src/lib/push.js) — a safe no-op otherwise.
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    let unsubscribe = () => {};
+    let cancelled = false;
+    listenForForegroundMessages((payload) => {
+      setPushToast(payload);
+      setTimeout(() => setPushToast(null), 5000);
+    }).then((unsub) => {
+      if (cancelled) unsub();
+      else unsubscribe = unsub;
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [isAuthenticated]);
 
   if (loading) {
     return (
@@ -69,6 +93,23 @@ export default function App() {
         </Routes>
       </AnimatePresence>
       {isAuthenticated && <div className="h-16 md:hidden" />}
+
+      <AnimatePresence>
+        {pushToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="fixed left-1/2 top-4 z-[1000] flex max-w-sm -translate-x-1/2 items-start gap-3 rounded-2xl border border-wheat/30 bg-forest-2 px-4 py-3 shadow-lg"
+          >
+            <Bell size={16} className="mt-0.5 shrink-0 text-wheat" />
+            <div>
+              <div className="text-sm font-semibold text-paper">{pushToast.title}</div>
+              {pushToast.body && <div className="mt-0.5 text-xs text-paper/60">{pushToast.body}</div>}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

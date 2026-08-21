@@ -12,6 +12,7 @@ export default function Recommendations() {
   const [job, setJob] = useState(null);
   const [results, setResults] = useState(null); // null = loading, [] = loaded empty
   const [relaxedHp, setRelaxedHp] = useState(false);
+  const [rankedBy, setRankedBy] = useState("heuristic");
   const [expanded, setExpanded] = useState(null);
   const [sort, setSort] = useState("match");
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -26,6 +27,7 @@ export default function Recommendations() {
     setJob(parsed.requirement);
     setResults(parsed.results || []);
     setRelaxedHp(!!parsed.relaxedHp);
+    setRankedBy(parsed.rankedBy || "heuristic");
   }, [navigate]);
 
   const cropLabel = taxonomy.crops.find((c) => c.id === job?.crop)?.label || job?.crop;
@@ -70,7 +72,11 @@ export default function Recommendations() {
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">{sorted.length} matches found</h1>
-          <p className="mt-1 text-sm text-paper/50">Ranked by our rules-based matching — best fit first.</p>
+          <p className="mt-1 text-sm text-paper/50">
+            {rankedBy === "ml"
+              ? "Ranked by our AI matching model — best fit first."
+              : "Ranked by our rules-based matching — best fit first."}
+          </p>
         </div>
         <button
           onClick={() => setFiltersOpen((v) => !v)}

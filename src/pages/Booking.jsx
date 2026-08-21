@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { MapPin, Calendar } from "lucide-react";
+import { MapPin, Calendar, Radio } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
 import { artCategoryFor, equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { subscribeToBooking } from "../lib/realtime.js";
 
 // Matches the `status` enum used in supabase/schema.sql `bookings` table.
 const STAGES = [
@@ -26,6 +27,7 @@ export default function Booking() {
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState(null);
+  const [liveUpdate, setLiveUpdate] = useState(false);
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
@@ -44,6 +46,20 @@ export default function Booking() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Phase 4 §2 "Realtime for booking updates" — live-update this page the
+  // moment the owner (or farmer) changes status, no polling/refresh needed.
+  // The realtime payload only carries `bookings`' own columns, so we merge
+  // it over the existing joined row rather than discarding the joins.
+  useEffect(() => {
+    if (!id) return undefined;
+    const unsubscribe = subscribeToBooking(id, (newRow) => {
+      setBooking((prev) => (prev ? { ...prev, ...newRow } : prev));
+      setLiveUpdate(true);
+      setTimeout(() => setLiveUpdate(false), 4000);
+    });
+    return unsubscribe;
+  }, [id]);
 
   const isOwner = booking && user && booking.owner_id === user.id;
   const isFarmer = booking && user && booking.farmer_id === user.id;
@@ -88,9 +104,16 @@ export default function Booking() {
     <main className="mx-auto max-w-5xl px-5 pb-16 pt-6 md:px-8 md:pt-10">
       <div className="mb-8">
         <span className="font-mono text-[11px] uppercase tracking-widest text-sky">Booking #{booking.id}</span>
-        <h1 className="mt-1 font-display text-2xl font-bold text-paper sm:text-3xl">
-          {isNegative ? `Booking ${booking.status.toLowerCase()}` : "Tracking your booking"}
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">
+            {isNegative ? `Booking ${booking.status.toLowerCase()}` : "Tracking your booking"}
+          </h1>
+          {liveUpdate && (
+            <span className="flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-1 text-[11px] font-medium text-leaf">
+              <Radio size={11} /> Updated just now
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.3fr_1fr]">

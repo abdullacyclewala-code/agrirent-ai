@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, MapPin, Pause, Play, Plus, Pencil, Trash2 } from "lucide-react";
+import { ShieldCheck, MapPin, Pause, Play, Plus, Pencil, Trash2, Bell, BellOff } from "lucide-react";
 import { Button, StatTile, Reveal } from "../components/ui/Primitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../lib/supabase.js";
 import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { enablePushNotifications } from "../lib/push.js";
 
 const tabs = ["Overview", "My Listings", "Settings"];
 
@@ -15,6 +16,16 @@ export default function Profile() {
   const [listings, setListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(true);
   const [busyId, setBusyId] = useState(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushResult, setPushResult] = useState(null); // { ok: bool, message: string }
+
+  const handleEnableNotifications = async () => {
+    setPushBusy(true);
+    setPushResult(null);
+    const result = await enablePushNotifications(user?.id);
+    setPushResult(result);
+    setPushBusy(false);
+  };
 
   const fetchListings = useCallback(async () => {
     if (!user) return;
@@ -191,8 +202,26 @@ export default function Profile() {
 
         {tab === "Settings" && (
           <motion.div key="settings" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }} className="mt-8 space-y-3">
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-medium text-paper">
+                  <Bell size={15} className="text-wheat" /> Booking notifications
+                </div>
+                <p className="mt-1 text-xs text-paper/50">
+                  Get notified when a booking is accepted, rejected, or completed.
+                </p>
+                {pushResult && (
+                  <p className={`mt-2 flex items-center gap-1 text-xs ${pushResult.ok ? "text-leaf" : "text-rust"}`}>
+                    {pushResult.ok ? <Bell size={12} /> : <BellOff size={12} />} {pushResult.message}
+                  </p>
+                )}
+              </div>
+              <Button variant="outline" className="!px-4 !py-2 text-xs" disabled={pushBusy} onClick={handleEnableNotifications}>
+                {pushBusy ? "Enabling…" : "Turn on"}
+              </Button>
+            </div>
             <div className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4 text-sm text-paper/50">
-              Notification preferences, payment methods, and language settings are planned for a later phase.
+              Payment methods and language settings are planned for a later phase.
             </div>
           </motion.div>
         )}

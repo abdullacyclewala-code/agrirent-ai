@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
 import { artCategoryFor } from "../lib/equipmentDisplay.js";
+import { subscribeToUserBookings } from "../lib/realtime.js";
 
 const STATUS_TONE = {
   Requested: "bg-sky/15 text-sky",
@@ -30,6 +31,32 @@ export default function MyBookings() {
         .order("created_at", { ascending: false });
       setBookings(error ? [] : data || []);
     })();
+  }, [user]);
+
+  // Phase 4 §2 "Realtime for booking updates" — keep this list live so an
+  // owner sees a new request the moment a farmer books, and a farmer sees a
+  // status change the moment the owner responds, with no manual refresh.
+  useEffect(() => {
+    if (!user) return undefined;
+    const unsubscribe = subscribeToUserBookings(user.id, (newRow, eventType) => {
+      if (eventType === "UPDATE") {
+        // Merge the changed columns into the existing (already-joined) row.
+        setBookings((prev) => (prev ? prev.map((b) => (b.id === newRow.id ? { ...b, ...newRow } : b)) : prev));
+      } else if (eventType === "INSERT") {
+        // A brand-new booking needs the equipment/owner/farmer joins this
+        // event doesn't carry — simplest correct fix is to re-fetch the
+        // one new row with its joins and prepend it.
+        (async () => {
+          const { data } = await supabase
+            .from("bookings")
+            .select("*, equipment:equipment_id ( name, equipment_type, location_label ), owner:owner_id ( name ), farmer:farmer_id ( name )")
+            .eq("id", newRow.id)
+            .single();
+          if (data) setBookings((prev) => (prev ? [data, ...prev] : [data]));
+        })();
+      }
+    });
+    return unsubscribe;
   }, [user]);
 
   return (

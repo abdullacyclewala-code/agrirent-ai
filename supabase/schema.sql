@@ -166,3 +166,51 @@ create index if not exists idx_bookings_farmer on public.bookings(farmer_id);
 create index if not exists idx_bookings_owner on public.bookings(owner_id);
 create index if not exists idx_bookings_equipment on public.bookings(equipment_id);
 create index if not exists idx_slots_equipment on public.availability_slots(equipment_id);
+
+-- ============ PHASE 4 ============
+
+-- ---- Push notification tokens (§4.3, FCM) ----
+-- One row per registered browser/device. `token` is unique so re-registering
+-- the same browser (e.g. after clearing permissions) upserts instead of
+-- duplicating — see src/lib/push.js's `.upsert(..., { onConflict: "token" })`.
+create table if not exists public.push_tokens (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.users(id) on delete cascade,
+  token text not null unique,
+  platform text not null default 'web',
+  created_at timestamptz not null default now()
+);
+
+alter table public.push_tokens enable row level security;
+
+-- Frontend only ever inserts/updates its OWN token (src/lib/push.js).
+create policy "Users manage own push tokens" on public.push_tokens
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- The backend looks up tokens by farmer_id/owner_id using the SERVICE ROLE
+-- key (backend/app/notifications.py), which bypasses RLS entirely — no
+-- extra "readable by everyone" policy is needed or wanted here (a token is
+-- effectively a device secret; only its owner or the backend should ever
+-- read it).
+
+create index if not exists idx_push_tokens_user on public.push_tokens(user_id);
+
+-- ---- Realtime (§2, Booking.jsx / MyBookings.jsx live status updates) ----
+-- Supabase Realtime only streams `postgres_changes` for tables explicitly
+-- added to the `supabase_realtime` publication. Equivalent to toggling
+-- Database > Replication > bookings ON in the Supabase dashboard.
+-- Wrapped in a DO block (unlike the idempotent `create table if not exists`
+-- above) because `alter publication ... add table` errors on re-run if the
+-- table is already a publication member, and this file is meant to be safe
+-- to re-run wholesale each phase.
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'bookings'
+  ) then
+    alter publication supabase_realtime add table public.bookings;
+  end if;
+end $$;
+
+

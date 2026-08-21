@@ -8,6 +8,7 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { runRulesFilter } from "../lib/rulesFilter.js";
 import { parseRequirementFreeText } from "../lib/llmClient.js";
+import { rankCandidates } from "../lib/rankClient.js";
 
 const crops = taxonomy.crops;
 const operations = taxonomy.operations;
@@ -159,9 +160,56 @@ export default function DescribeJob() {
 
       const { results, relaxedHp } = runRulesFilter(normalized, parsed_json, user?.id);
 
+      // Phase 4 §6.4 "availability match quality" feature — check which of
+      // the filtered candidates already have a Confirmed/In Use booking that
+      // covers the farmer's requested date, so the ranker can prefer
+      // equipment that's actually free that day. Same overlap logic as the
+      // booking-confirm re-check in EquipmentDetails.jsx, just read-only and
+      // scoped to "does this exact date fall inside an existing booking".
+      let candidatesForRanking = results;
+      if (form.date && results.length) {
+        const equipmentIds = results.map((r) => r.id);
+        const { data: existingBookings } = await supabase
+          .from("bookings")
+          .select("equipment_id, start_date, end_date")
+          .in("equipment_id", equipmentIds)
+          .in("status", ["Confirmed", "In Use"]);
+
+        const busyIds = new Set(
+          (existingBookings || [])
+            .filter((b) => b.start_date <= form.date && b.end_date >= form.date)
+            .map((b) => b.equipment_id)
+        );
+        candidatesForRanking = results.map((r) => ({
+          ...r,
+          availability_quality: busyIds.has(r.id) ? 0.3 : 1.0,
+        }));
+      }
+
+      // Phase 4 §6.4/§6.5 — replace the Phase 2 heuristic score with the real
+      // LightGBM ranker's score, when the backend is reachable. If it isn't
+      // (cold-start timeout, backend down, VITE_BACKEND_URL unset), keep the
+      // heuristic scores `runRulesFilter` already computed — same
+      // always-works fallback pattern as the Phase 3 LLM parse step.
+      const rankedById = await rankCandidates(parsed_json, candidatesForRanking);
+      const finalResults = rankedById
+        ? results.map((r) => {
+            const ranked = rankedById.get(r.id);
+            if (!ranked) return r;
+            return { ...r, matchScore: ranked.rank_score };
+          })
+        : results;
+      finalResults.sort((a, b) => b.matchScore - a.matchScore);
+
       sessionStorage.setItem(
         "kisan_matches",
-        JSON.stringify({ requirementId, requirement: { ...form, parsed_json }, results, relaxedHp })
+        JSON.stringify({
+          requirementId,
+          requirement: { ...form, parsed_json },
+          results: finalResults,
+          relaxedHp,
+          rankedBy: rankedById ? "ml" : "heuristic",
+        })
       );
 
       setTimeout(() => navigate("/recommendations"), 1800);

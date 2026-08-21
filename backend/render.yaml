@@ -19,3 +19,14 @@ services:
         value: gemini-3.5-flash-lite
       - key: FRONTEND_ORIGIN
         sync: false
+      # Phase 4 — push notifications (see backend/README.md "Setting up
+      # push notifications"). All optional: unset = /notifications/booking-webhook
+      # safely no-ops, per the disclosed fallback in app/notifications.py.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: WEBHOOK_SECRET
+        sync: false

@@ -3,3 +3,11 @@ uvicorn[standard]==0.32.1
 pydantic==2.9.2
 requests==2.32.3
 python-dotenv==1.0.1
+
+# Phase 4 — LightGBM ranking (§6.4/§6.5)
+lightgbm==4.7.0
+numpy==2.5.2
+joblib==1.5.3
+
+# Phase 4 — FCM push notifications
+firebase-admin==7.5.0
