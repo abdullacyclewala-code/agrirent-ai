@@ -35,11 +35,12 @@ double-booking auto-conflict) are handled entirely client-side
 (`src/lib/bookingLifecycle.js`) since they're just ordinary `bookings`
 UPDATEs — no backend involvement needed.
 
-**Phase 6 item 2:** no new endpoint either — `app/multilingual_client.py`
+**Phase 6 item 2:** no new endpoint either — `app/cloudflare_client.py`
 is a new internal HTTP client, called from `app/semantic_match.py`, that
-reaches a separate service (`/hf-space-semantic`, deployed to a free
-Hugging Face Space) for §6.2a's multilingual double-check. See
-"Multilingual semantic double-check" below.
+calls Cloudflare Workers AI's hosted `@cf/baai/bge-m3` model directly for
+§6.2a's multilingual double-check. (An earlier pass ran this via a
+self-hosted Hugging Face Space; that extra service has been removed — see
+"Multilingual semantic double-check" below for why.)
 
 This backend reads two things (`push_tokens` for notifications,
 `bookings`+`requirements` for retraining), both via the Supabase REST API
@@ -158,42 +159,59 @@ shipped in Phase 3 with exact taxonomy match → synonym map → `difflib`
 lexical similarity only — no real embedding model, since
 `sentence-transformers` needs `torch` (~800MB+) and doesn't fit this
 service's 512MB Render free tier. Phase 6 closes that gap without changing
-that constraint: the real model
-(`paraphrase-multilingual-MiniLM-L12-v2`, 50+ languages incl. Hindi/Marathi)
-runs in a **separate** service — `/hf-space-semantic` at the repo root,
-deployed to a free Hugging Face Space (Docker SDK, 16GB free CPU RAM) — and
-this backend calls it over HTTP via `app/multilingual_client.py`.
+that constraint, by calling out to a hosted model instead of running one
+in-process: **Cloudflare Workers AI**'s `@cf/baai/bge-m3` model, called
+directly over HTTP via `app/cloudflare_client.py` — no separate service to
+deploy or keep warm.
+
+(**Changelog:** an earlier Phase 6 pass ran this via a self-hosted Hugging
+Face Space (`hf-space-semantic/`, Docker SDK) instead. That extra
+service — its own Dockerfile, its own git remote, its own deploy step, and
+free-tier cold-start/sleep behaviour — added infrastructure overhead for
+serving one embedding model. It has been removed in favour of calling
+Cloudflare's already-hosted BGE-M3 model directly from this backend.
+BGE-M3 is also a stronger multilingual embedding model for this project's
+actual languages — English, Hindi, Marathi, and Hinglish/code-mixed
+text — than the Space's `paraphrase-multilingual-MiniLM-L12-v2` was, and
+Cloudflare's free allowance (10,000 Neurons/day) covers this project's
+low-volume double-check use case with no cold starts to plan around.)
 
 Per §6.2a, this isn't just an outage fallback for the LLM — it runs as a
 double-check/corrector on every `crop`/`operation`/`equipment_type` field
 the LLM produces that didn't already resolve via the free exact-match/
 synonym-map lookup, catching dialectal Hindi/Marathi/Hinglish terms the LLM
 mis-maps. See `app/semantic_match.py`'s docstring for the exact fallback
-order and `hf-space-semantic/README.md` for the service's own API and
-cold-start behaviour.
+order.
 
 **This is entirely optional and degrades gracefully, same as every other
-external call in this project:** with `HF_SPACE_URL` unset,
+external call in this project:** with `CF_ACCOUNT_ID`/`CF_API_TOKEN` unset,
 `semantic_match.py` skips straight to its `difflib` last resort — nothing
-breaks, vocabulary correction just isn't multilingual-embedding-based that
+breaks, vocabulary correction just isn't semantic-embedding-based that
 session (same as the Phase 3 baseline).
 
-**Manual setup required (cannot be done from a repo commit alone):** a
-Hugging Face Space has to be created through a Hugging Face account and the
-`hf-space-semantic/` folder pushed to *that* Space's own git remote — full
-step-by-step instructions are in `hf-space-semantic/README.md` "Deploying
-this". Once deployed, set these on this Render service:
+**Manual setup required (cannot be done from a repo commit alone):** a free
+Cloudflare account and a Workers AI API token — no Space, no Docker image,
+no separate deploy. Steps:
 
-- `HF_SPACE_URL` — the Space's URL, e.g.
-  `https://<your-username>-agrirent-ai-semantic.hf.space`.
-- `HF_SPACE_API_TOKEN` — optional, only needed if you set an `API_TOKEN`
-  secret on the Space itself (recommended, since free Spaces are public).
-- `HF_SPACE_TIMEOUT_S` — optional, defaults to `45` (seconds). Free Spaces
-  sleep after inactivity; this covers the documented 30–60s cold-start
-  window before falling back to `difflib`.
+1. Sign up (free) at https://dash.cloudflare.com/sign-up if you don't have
+   an account.
+2. Find your **Account ID**: Cloudflare dashboard → any domain/Workers &
+   Pages → the Account ID is shown in the right-hand sidebar (or
+   Workers & Pages → Overview).
+3. Create an API token: dashboard → **My Profile → API Tokens → Create
+   Token** → use the **"Workers AI"** template (or a custom token with the
+   `Account.Workers AI` → `Read`/`Edit` permission) → Continue → Create
+   Token → copy it immediately (shown once).
+4. Set these two env vars on this Render service, then redeploy:
+   - `CF_ACCOUNT_ID` — the Account ID from step 2.
+   - `CF_API_TOKEN` — the token from step 3.
+   - `CF_BGE_MODEL` — optional, defaults to `@cf/baai/bge-m3`.
+   - `CF_TIMEOUT_S` — optional, defaults to `15` (seconds). Workers AI is
+     hosted/always-on, so this only needs to cover a genuine network hiccup,
+     not a cold start.
 
-Test it once `HF_SPACE_URL` is set (redeploy this backend after adding the
-env var):
+Test it once the env vars are set (redeploy this backend after adding
+them):
 ```bash
 curl -X POST http://localhost:8000/requirements/parse \
   -H "Content-Type: application/json" \
@@ -201,11 +219,24 @@ curl -X POST http://localhost:8000/requirements/parse \
 ```
 Check the response's `confidence_notes` — a corrected field will say
 `"... matched to '...' (semantic fallback, score 0.XX)"`; a score that
-looks like a cosine similarity (typically 0.55–0.95) came from the HF
-Space, a score that looks like a difflib ratio came from the local
-fallback. Render logs also show which path was taken — search for
-`agrirent.multilingual_client` (HF Space attempted) vs. no such line (HF
-Space not configured, went straight to difflib).
+looks like a cosine similarity (typically 0.55–0.95) came from Cloudflare,
+a score that looks like a difflib ratio came from the local fallback.
+Render logs also show which path was taken — search for
+`agrirent.cloudflare_client` (Cloudflare attempted) vs. no such line
+(integration not configured, went straight to difflib).
+
+You can also sanity-check the Cloudflare call in isolation, outside this
+backend entirely:
+```bash
+curl "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/ai/run/@cf/baai/bge-m3" \
+  -X POST \
+  -H "Authorization: Bearer $CF_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "nangar chalani", "contexts": [{"text": "ploughing"}, {"text": "harvesting"}, {"text": "sowing"}]}'
+```
+A healthy response looks like
+`{"result": {"response": [{"id": 0, "score": 0.7...}, ...]}, "success": true}`
+— the highest-scoring `id` indexes back into the `contexts` array you sent.
 
 ## Deploying to Render (free tier)
 

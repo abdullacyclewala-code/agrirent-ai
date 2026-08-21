@@ -30,12 +30,12 @@ services:
         sync: false
       - key: WEBHOOK_SECRET
         sync: false
-      # Phase 6 item 2 — multilingual semantic double-check (see
-      # backend/README.md "Multilingual semantic double-check" and
-      # hf-space-semantic/README.md "Deploying this"). Optional: unset =
-      # semantic_match.py falls straight to its difflib last resort, per
-      # the disclosed fallback in app/semantic_match.py.
-      - key: HF_SPACE_URL
+      # Phase 6 item 2 — multilingual semantic double-check, via Cloudflare
+      # Workers AI (BGE-M3) (see backend/README.md "Multilingual semantic
+      # double-check"). Optional: unset = semantic_match.py falls straight
+      # to its difflib last resort, per the disclosed fallback in
+      # app/semantic_match.py.
+      - key: CF_ACCOUNT_ID
         sync: false
-      - key: HF_SPACE_API_TOKEN
+      - key: CF_API_TOKEN
         sync: false
