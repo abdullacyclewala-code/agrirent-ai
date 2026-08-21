@@ -7,8 +7,8 @@
 
 ## 0. STATUS *(update this every session)*
 
-**Phase:** 5 — polish edge cases, real-data retraining plan
-**Currently building:** Phase 5 done — all 5 MVP phases now complete; ongoing work is monitoring real usage and re-running the Phase 5 retrain script as real bookings accumulate
+**Phase:** 6 — closing deviations found in a post-MVP audit (see table below)
+**Currently building:** Phase 6, item-by-item, in this order: (1) i18n (English/Hindi/Marathi), (2) multilingual semantic double-check on HF Spaces, (3) equipment image upload, (4) geo distance filtering, (5) real availability_slots calendar, (6) PWA install/offline. TypeScript and Zustand from the original §2 stack are intentionally NOT being adopted — plain JS/JSX and React Context are staying as-is; this is a deliberate, permanent decision, not a pending item.
 
 | Phase | Item | Status |
 |---|---|---|
@@ -43,6 +43,35 @@
 
 **Rule:** Don't start a phase-N item until all phase-(N-1) items are ⬜→✅. This keeps each AI session scoped to one working slice.
 
+### Phase 6 — closing deviations (post-MVP audit)
+
+A review of the live repo against this doc found several undisclosed or partially-disclosed gaps in addition to the ones already logged inline in the Phase 1–5 STATUS rows above. This table is the tracker for closing them. Each item stays ⬜ until actually built — don't mark done from this doc edit alone.
+
+| # | Deviation found | Decision | Status |
+|---|---|---|---|
+| 1 | §1/§2: multilingual UI (English/Hindi/Marathi + Hinglish) via i18next — never implemented. `index.html` hardcoded `lang="en"`, no locale files, no language switcher. | **Fix.** Add `i18next` + `react-i18next` (free/OSS). Extract all UI strings into `en.json` / `hi.json` / `mr.json`. Seed hi/mr via free MT (Google Translate / DeepL free tier / LLM draft), then have a native speaker review farmer-facing copy specifically — highest-risk strings since farmers are the primary users. Add a language toggle in the navbar. | ⬜ Not started |
+| 2 | §6.2: semantic matching fallback uses `difflib` + synonym map only (English-oriented). Doesn't help with Hindi/Marathi dialectal variance the LLM sometimes mis-maps. | **Fix, with a specific role — see §6.2a below.** Deploy `paraphrase-multilingual-MiniLM-L12-v2` (sentence-transformers, free/OSS, 50+ languages incl. Hindi/Marathi) on a free Hugging Face Space (Docker SDK, free CPU tier = 16GB RAM, fits comfortably vs Render's 512MB). This does **not** replace the LLM — see §6.2a for exact role. | ⬜ Not started |
+| 3 | §4.2/§2: equipment photo upload — Supabase Storage bucket never created; listings show illustrated art instead of real photos. | **Fix.** Create a public Supabase Storage bucket (1GB free), compress client-side to ~150–200KB before upload (per §2's original note), wire into `AddEquipment.jsx`. | ⬜ Not started |
+| 4 | §6.3/§6.4: geo distance filtering/ranking — Mapbox/PostGIS never wired up. `service_area_radius_km` not enforced; `distance` ranking feature is a constant placeholder. | **Fix, free-tier path.** Supabase Postgres already ships PostGIS (free, no separate service) — enable the extension, store `users.location`/`equipment.location` as `geography(Point)`, use `ST_DWithin`/`ST_Distance` directly in the existing Supabase queries. Skip Mapbox's paid geocoding API for now — take lat/lng from the browser's free Geolocation API (farmer/owner already on their device) or a manual pin-on-map (e.g. free `react-leaflet` + OpenStreetMap tiles, no API key needed) instead of address-string geocoding. | ⬜ Not started |
+| 5 | §5.2: `availability_slots` table — never built; booking conflicts checked via ad-hoc date-overlap query against `bookings` instead. | **Fix.** Build the real `availability_slots` table per §5.2, replace the ad-hoc overlap query in `EquipmentDetails.jsx`/`Booking.jsx` with slot lookups. No new infra — same Supabase Postgres. | ⬜ Not started |
+| 6 | §2: `vite-plugin-pwa` — never installed. No manifest, no installable/offline app shell (the FCM service worker is push-only, not a full PWA). | **Fix.** `npm i -D vite-plugin-pwa`, add manifest using existing `public/icons.svg` assets. Directly supports the "mobile, no registration" goal — installable home-screen app, offline caching, zero cost. | ⬜ Not started |
+| 7 | §2: TypeScript and Zustand — spec'd, never adopted (plain `.jsx` + React Context throughout). | **Won't fix — deliberate.** Most of the webapp is already built in plain JS/JSX with Context; rewriting now isn't worth the churn. §2's tech stack table below is updated to reflect this as the actual, final choice rather than a pending gap. | ✅ Accepted as-is (not a bug) |
+| 8 | Phone/OTP auth → email/password; no image upload; no geo filter — already disclosed inline in Phase 1/2/4 STATUS rows above. | **No change requested.** Left as-is per existing disclosure (OTP needs paid Twilio/SMS). | Unchanged |
+
+### 6.2a Role of the multilingual model — LLM stays primary, model is a verifier/corrector
+
+To be explicit about the intended division of labor (this is a change from the original §6.1/§6.2 fallback-chain framing):
+
+- The LLM (Groq→Gemini) remains the **primary** extractor for crop/operation/area from free text, in all languages, same as §6.1.
+- The multilingual embedding model is **not** a replacement path used only when the LLM totally fails — it runs as a **double-check/correction step** on every LLM output before it's shown to the farmer for review:
+  1. LLM extracts `crop`/`operation`/`equipment_type` as usual.
+  2. Each extracted term is embedded (multilingual model) and cosine-matched against the taxonomy's canonical terms.
+  3. If the LLM's term already matches a canonical term with high confidence → keep it, no change.
+  4. If confidence is low (LLM likely mis-mapped a dialectal/regional term) but the embedding match against a *different* canonical term is high-confidence → **silently correct** to that term.
+  5. If neither the LLM's term nor the embedding match clears the confidence threshold → leave it for the farmer to fix in the existing review step (§6.1's manual-review UI), same as today.
+- Order of cheap-to-expensive fallback stays: exact synonym-map lookup (instant, free) → multilingual HF Space embedding call (adds latency, only for terms that need it) → farmer manual review (always available, per §4.5).
+- This means the HF Space is called on most requests (as a checker), not just on total LLM failure — worth noting for Space cold-start planning (free Spaces sleep after inactivity; occasional 30–60s wake-up latency is an accepted tradeoff, same as Render's free-tier cold starts today).
+
 **Architecture note (grown again in Phase 4, unchanged in Phase 5):** Phase 3 scoped the backend to one job (LLM parsing). Phase 4 added two more things that genuinely need a server: (1) the LightGBM model itself — Python-only, can't run in the browser, and (2) sending FCM push — needs a Firebase service-account secret that can't live in frontend code. Phase 5 didn't add a new endpoint — both remaining §4.5 edge cases (stale-request expiry, double-booking conflict) are ordinary `bookings` UPDATEs that RLS already lets either party make, so they're handled entirely client-side (`src/lib/bookingLifecycle.js`), reusing the existing webhook for notification. Equipment/booking CRUD, the rules-engine hard filter, Realtime subscriptions, and now the Phase 5 lifecycle updates are all still frontend-to-Supabase directly (unchanged since Phase 1/2) — this backend only ever grows for the pieces that need a secret or a heavier runtime than a browser can offer.
 
 ---
@@ -59,15 +88,15 @@ AgriRent AI is a multilingual (English/Hindi/Marathi + Hinglish) equipment renta
 
 | Layer | Choice |
 |---|---|
-| Frontend | React + Vite + TypeScript, Tailwind CSS, i18next, Zustand, vite-plugin-pwa |
-| Backend | FastAPI + SQLAlchemy + Alembic + Pydantic |
-| DB / Auth / Storage / Realtime | Supabase (Postgres + PostGIS, Auth via phone/OTP, Storage for images, Realtime for booking updates) |
-| LLM | Gemini API → Groq API fallback → manual structured form fallback |
+| Frontend | React + Vite + **plain JS/JSX** (TypeScript intentionally not adopted — see Phase 6 table), Tailwind CSS, i18next *(Phase 6, planned)*, React Context *(Zustand intentionally not adopted)*, vite-plugin-pwa *(Phase 6, planned)* |
+| Backend | FastAPI + Pydantic (SQLAlchemy/Alembic not used — Supabase client handles DB access directly) |
+| DB / Auth / Storage / Realtime | Supabase (Postgres + PostGIS *(Phase 6, planned — enable extension for geo)*, Auth via email/password — see Phase 1 disclosure, Storage for images *(Phase 6, planned)*, Realtime for booking updates) |
+| LLM | Groq API (primary) → Gemini API (fallback) → manual structured form fallback — see Phase 3 disclosure for why the doc's original Gemini→Groq order was flipped |
 | ML ranking | LightGBM Ranker (LambdaMART) over rule-filtered candidates |
-| Semantic matching | sentence-transformers (`all-MiniLM-L6-v2`) |
-| Location | Mapbox (geocoding, distance) + PostGIS (geo queries) |
+| Semantic matching | Exact synonym-map lookup → **`paraphrase-multilingual-MiniLM-L12-v2`** (sentence-transformers, hosted on a free Hugging Face Space) as an LLM double-check/corrector across English/Hindi/Marathi, not just an outage fallback — see §6.2a → `difflib` lexical similarity as last resort |
+| Location | Browser Geolocation API / manual map pin (`react-leaflet` + OpenStreetMap, free, no API key) + Supabase's built-in PostGIS *(Phase 6, planned — Mapbox's paid geocoding dropped in favor of this)* |
 | Notifications | Firebase Cloud Messaging |
-| Hosting | Frontend → Vercel · Backend → Render (free tier) · DB/Auth/Storage → Supabase |
+| Hosting | Frontend → Vercel · Backend → Render (free tier) · Semantic-match model → Hugging Face Spaces (free CPU tier) *(Phase 6, planned)* · DB/Auth/Storage → Supabase |
 
 Images: compress client-side to ~150–200KB before upload to Supabase Storage (1GB free limit, separate from 500MB DB limit).
 
