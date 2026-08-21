@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { MapPin, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -21,6 +22,7 @@ const STATUS_TONE = {
 };
 
 export default function MyBookings() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [bookings, setBookings] = useState(null);
 
@@ -77,16 +79,16 @@ export default function MyBookings() {
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-10 md:px-8 md:py-14">
-      <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">Your bookings</h1>
-      <p className="mt-1 text-sm text-paper/50">As a farmer requesting equipment, or an owner receiving requests.</p>
+      <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">{t("myBookings.title")}</h1>
+      <p className="mt-1 text-sm text-paper/50">{t("myBookings.subtitle")}</p>
 
       {bookings === null ? (
-        <div className="py-16 text-center text-sm text-paper/40">Loading…</div>
+        <div className="py-16 text-center text-sm text-paper/40">{t("common.loading")}</div>
       ) : bookings.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-16 text-center">
-          <p className="text-paper/60">No bookings yet.</p>
+          <p className="text-paper/60">{t("myBookings.empty")}</p>
           <Link to="/describe-job" className="mt-3 inline-block text-sm font-medium text-wheat hover:text-[#f3c162]">
-            Describe a job to find equipment →
+            {t("myBookings.emptyCta")}
           </Link>
         </div>
       ) : (
@@ -114,7 +116,7 @@ export default function MyBookings() {
                       {b.equipment?.location_label && (
                         <span className="flex items-center gap-1"><MapPin size={11} /> {b.equipment.location_label}</span>
                       )}
-                      <span>{isOwner ? `Farmer: ${b.farmer?.name || "—"}` : `Owner: ${b.owner?.name || "—"}`}</span>
+                      <span>{isOwner ? t("myBookings.farmerLabel", { name: b.farmer?.name || "—" }) : t("myBookings.ownerLabel", { name: b.owner?.name || "—" })}</span>
                     </p>
                   </div>
                 </Link>

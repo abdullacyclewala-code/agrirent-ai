@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { MapPin, Calendar, Radio } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -10,29 +11,31 @@ import { subscribeToBooking } from "../lib/realtime.js";
 import { datesOverlap, expireStaleRequests, conflictOutOverlappingRequests } from "../lib/bookingLifecycle.js";
 
 // Matches the `status` values used in supabase/schema.sql `bookings` table.
-const STAGES = [
-  { id: "Requested", label: "Requested", desc: "Sent to the owner, waiting for a response" },
-  { id: "Confirmed", label: "Confirmed", desc: "Owner accepted — slot is locked in" },
-  { id: "In Use", label: "In Use", desc: "Work is currently in progress" },
-  { id: "Completed", label: "Completed", desc: "Job done" },
-];
 const TERMINAL_NEGATIVE = ["Rejected", "Cancelled", "Expired", "Conflicted"];
-// §4.5 edge cases — a farmer should understand WHY a booking ended up here,
-// since "Expired"/"Conflicted" aren't a decision either party made.
-const NEGATIVE_COPY = {
-  Rejected: "This booking was rejected by the owner.",
-  Cancelled: "This booking was cancelled.",
-  Expired: "This request expired because the owner didn't respond in time.",
-  Conflicted: "Someone else's request for this equipment was accepted first.",
-};
 // A farmer can search again straight from a dead-end booking instead of
 // having to find their way back manually.
 const SUGGEST_RETRY = ["Expired", "Conflicted", "Rejected"];
 
 export default function Booking() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+
+  // §4.5 edge cases — a farmer should understand WHY a booking ended up here,
+  // since "Expired"/"Conflicted" aren't a decision either party made.
+  const NEGATIVE_COPY = {
+    Rejected: t("booking.negRejected"),
+    Cancelled: t("booking.negCancelled"),
+    Expired: t("booking.negExpired"),
+    Conflicted: t("booking.negConflicted"),
+  };
+  const STAGES = [
+    { id: "Requested", label: t("booking.stageRequestedLabel"), desc: t("booking.stageRequestedDesc") },
+    { id: "Confirmed", label: t("booking.stageConfirmedLabel"), desc: t("booking.stageConfirmedDesc") },
+    { id: "In Use", label: t("booking.stageInUseLabel"), desc: t("booking.stageInUseDesc") },
+    { id: "Completed", label: t("booking.stageCompletedLabel"), desc: t("booking.stageCompletedDesc") },
+  ];
 
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +105,7 @@ export default function Booking() {
         .in("status", ["Confirmed", "In Use"])
         .neq("id", booking.id);
       if (conflictErr) {
-        setActionError("Couldn't verify availability. Try again.");
+        setActionError(t("booking.verifyFailed"));
         setBusy(false);
         return;
       }
@@ -110,7 +113,7 @@ export default function Booking() {
         datesOverlap(b.start_date, b.end_date, booking.start_date, booking.end_date)
       );
       if (hasConflict) {
-        setActionError("These dates were already confirmed for another booking on this equipment.");
+        setActionError(t("booking.alreadyConfirmed"));
         setBusy(false);
         return;
       }
@@ -118,7 +121,7 @@ export default function Booking() {
 
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
     if (error) {
-      setActionError(error.message || "Couldn't update the booking.");
+      setActionError(error.message || t("booking.updateFailed"));
       setBusy(false);
       return;
     }
@@ -136,21 +139,21 @@ export default function Booking() {
   };
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">Loading…</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">{t("common.loading")}</div>;
   }
   if (notFound || !booking) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-paper/60">This booking doesn't exist.</p>
-        <Button variant="outline" onClick={() => navigate("/")}>Go home</Button>
+        <p className="text-paper/60">{t("booking.notFound")}</p>
+        <Button variant="outline" onClick={() => navigate("/")}>{t("common.goHome")}</Button>
       </div>
     );
   }
   if (!isOwner && !isFarmer) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-paper/60">You don't have access to this booking.</p>
-        <Button variant="outline" onClick={() => navigate("/")}>Go home</Button>
+        <p className="text-paper/60">{t("booking.noAccess")}</p>
+        <Button variant="outline" onClick={() => navigate("/")}>{t("common.goHome")}</Button>
       </div>
     );
   }
@@ -162,14 +165,14 @@ export default function Booking() {
   return (
     <main className="mx-auto max-w-5xl px-5 pb-16 pt-6 md:px-8 md:pt-10">
       <div className="mb-8">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-sky">Booking #{booking.id}</span>
+        <span className="font-mono text-[11px] uppercase tracking-widest text-sky">{t("booking.bookingNumber", { id: booking.id })}</span>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">
-            {isNegative ? `Booking ${booking.status.toLowerCase()}` : "Tracking your booking"}
+            {isNegative ? t("booking.statusTitle", { status: booking.status.toLowerCase() }) : t("booking.trackingTitle")}
           </h1>
           {liveUpdate && (
             <span className="flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-1 text-[11px] font-medium text-leaf">
-              <Radio size={11} /> Updated just now
+              <Radio size={11} /> {t("booking.updatedJustNow")}
             </span>
           )}
         </div>
@@ -180,10 +183,10 @@ export default function Booking() {
           {isNegative ? (
             <Reveal>
               <div className="rounded-3xl border border-rust/30 bg-rust/10 p-6 text-center">
-                <p className="text-paper/80">{NEGATIVE_COPY[booking.status] || `This booking was ${booking.status.toLowerCase()}.`}</p>
+                <p className="text-paper/80">{NEGATIVE_COPY[booking.status] || t("booking.negGeneric", { status: booking.status.toLowerCase() })}</p>
                 {isFarmer && SUGGEST_RETRY.includes(booking.status) && (
                   <Button variant="outline" className="mt-4 !px-5 !py-2 text-sm" onClick={() => navigate("/describe-job")}>
-                    Search for another match
+                    {t("booking.searchAgain")}
                   </Button>
                 )}
               </div>
@@ -226,15 +229,15 @@ export default function Booking() {
             <Reveal delay={0.1} className="mt-6 flex flex-wrap gap-2">
               {booking.status === "Requested" && (
                 <>
-                  <Button variant="primary" disabled={busy} onClick={() => setStatus("Confirmed")}>Accept</Button>
-                  <Button variant="ghost" disabled={busy} onClick={() => setStatus("Rejected")}>Reject</Button>
+                  <Button variant="primary" disabled={busy} onClick={() => setStatus("Confirmed")}>{t("booking.accept")}</Button>
+                  <Button variant="ghost" disabled={busy} onClick={() => setStatus("Rejected")}>{t("booking.reject")}</Button>
                 </>
               )}
               {booking.status === "Confirmed" && (
-                <Button variant="primary" disabled={busy} onClick={() => setStatus("In Use")}>Mark in use</Button>
+                <Button variant="primary" disabled={busy} onClick={() => setStatus("In Use")}>{t("booking.markInUse")}</Button>
               )}
               {booking.status === "In Use" && (
-                <Button variant="primary" disabled={busy} onClick={() => setStatus("Completed")}>Mark completed</Button>
+                <Button variant="primary" disabled={busy} onClick={() => setStatus("Completed")}>{t("booking.markCompleted")}</Button>
               )}
             </Reveal>
           )}
@@ -247,7 +250,7 @@ export default function Booking() {
                 onClick={() => setStatus("Cancelled")}
                 className="text-sm text-rust hover:underline disabled:opacity-40"
               >
-                Cancel booking
+                {t("booking.cancelBooking")}
               </button>
             </Reveal>
           )}
@@ -275,11 +278,11 @@ export default function Booking() {
 
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between text-paper/60">
-                <span>{isOwner ? "Farmer" : "Owner"}</span>
+                <span>{isOwner ? t("booking.farmerLabel") : t("booking.ownerLabel")}</span>
                 <span className="text-paper">{isOwner ? booking.farmer?.name : booking.owner?.name}</span>
               </div>
               <div className="flex justify-between border-t border-white/10 pt-2 font-semibold text-paper">
-                <span>Price</span>
+                <span>{t("booking.priceLabel")}</span>
                 <span className="font-mono text-wheat">₹{booking.price}<span className="text-xs text-paper/40">/{eq?.price_unit}</span></span>
               </div>
             </div>

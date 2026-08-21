@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Auth() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState("signin"); // signin | signup
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,7 +30,7 @@ export default function Auth() {
       return;
     }
     if (mode === "signup") {
-      setError("Account created. Check your email to confirm, then sign in.");
+      setError(t("auth.accountCreated"));
       setMode("signin");
       return;
     }
@@ -44,28 +46,28 @@ export default function Auth() {
         className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-6"
       >
         <h1 className="text-2xl font-semibold text-white mb-1">
-          {mode === "signin" ? "Welcome back" : "Create your account"}
+          {mode === "signin" ? t("auth.welcomeBack") : t("auth.createAccount")}
         </h1>
         <p className="text-sm text-white/60 mb-6">
-          {mode === "signin" ? "Sign in to AgriRent AI" : "Rent or list farm equipment"}
+          {mode === "signin" ? t("auth.signInSubtitle") : t("auth.signUpSubtitle")}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "signup" && (
             <div>
-              <label className="text-xs text-white/50 mb-1 block">Full name</label>
+              <label className="text-xs text-white/50 mb-1 block">{t("auth.fullName")}</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
                 className="w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white outline-none focus:border-wheat"
-                placeholder="Baljeet Kaur"
+                placeholder={t("auth.fullNamePlaceholder")}
               />
             </div>
           )}
           <div>
-            <label className="text-xs text-white/50 mb-1 block">Email</label>
+            <label className="text-xs text-white/50 mb-1 block">{t("auth.email")}</label>
             <input
               type="email"
               value={email}
@@ -76,7 +78,7 @@ export default function Auth() {
             />
           </div>
           <div>
-            <label className="text-xs text-white/50 mb-1 block">Password</label>
+            <label className="text-xs text-white/50 mb-1 block">{t("auth.password")}</label>
             <input
               type="password"
               value={password}
@@ -95,7 +97,7 @@ export default function Auth() {
             disabled={busy}
             className="w-full rounded-lg bg-wheat text-ink font-medium py-2.5 disabled:opacity-50"
           >
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Sign up"}
+            {busy ? t("auth.pleaseWait") : mode === "signin" ? t("auth.signIn") : t("auth.signUp")}
           </button>
         </form>
 
@@ -106,7 +108,7 @@ export default function Auth() {
           }}
           className="mt-4 text-sm text-white/60 hover:text-white w-full text-center"
         >
-          {mode === "signin" ? "No account? Sign up" : "Already have an account? Sign in"}
+          {mode === "signin" ? t("auth.noAccount") : t("auth.haveAccount")}
         </button>
       </motion.div>
     </div>

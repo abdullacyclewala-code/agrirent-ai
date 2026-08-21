@@ -1,15 +1,19 @@
 import { NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { LayoutDashboard, Sparkles, ClipboardList, UserRound, Sprout } from "lucide-react";
 import RoleToggle from "../ui/RoleToggle.jsx";
-
-const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/describe-job", label: "Find Equipment", icon: Sparkles },
-  { to: "/bookings", label: "Bookings", icon: ClipboardList },
-  { to: "/profile", label: "Profile", icon: UserRound },
-];
+import LanguageSwitcher from "../ui/LanguageSwitcher.jsx";
 
 export default function NavBar() {
+  const { t } = useTranslation();
+
+  const navItems = [
+    { to: "/", label: t("nav.dashboard"), icon: LayoutDashboard, end: true },
+    { to: "/describe-job", label: t("nav.findEquipment"), icon: Sparkles },
+    { to: "/bookings", label: t("nav.bookings"), icon: ClipboardList },
+    { to: "/profile", label: t("nav.profile"), icon: UserRound },
+  ];
+
   return (
     <>
       {/* Desktop top nav */}
@@ -19,7 +23,7 @@ export default function NavBar() {
             <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-wheat text-ink">
               <Sprout size={18} strokeWidth={2.5} />
             </span>
-            <span className="font-display text-lg font-bold tracking-tight text-paper">Kisan Match</span>
+            <span className="font-display text-lg font-bold tracking-tight text-paper">{t("nav.brand")}</span>
           </NavLink>
           <nav className="flex items-center gap-1">
             {navItems.map((item) => (
@@ -37,7 +41,10 @@ export default function NavBar() {
               </NavLink>
             ))}
           </nav>
-          <RoleToggle />
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <RoleToggle />
+          </div>
         </div>
       </header>
 
@@ -47,9 +54,12 @@ export default function NavBar() {
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-wheat text-ink">
             <Sprout size={16} strokeWidth={2.5} />
           </span>
-          <span className="font-display text-base font-bold text-paper">Kisan Match</span>
+          <span className="font-display text-base font-bold text-paper">{t("nav.brand")}</span>
         </NavLink>
-        <RoleToggle />
+        <div className="flex items-center gap-2">
+          <LanguageSwitcher />
+          <RoleToggle />
+        </div>
       </header>
 
       {/* Mobile bottom nav */}

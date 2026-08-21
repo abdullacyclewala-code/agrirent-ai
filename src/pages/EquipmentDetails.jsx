@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { MapPin, ChevronLeft } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -9,6 +10,7 @@ import { artCategoryFor, equipmentTypeLabel, operationLabel, cropLabel } from ".
 import { datesOverlap } from "../lib/bookingLifecycle.js";
 
 export default function EquipmentDetails() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,11 +51,11 @@ export default function EquipmentDetails() {
 
   const requestBooking = async () => {
     if (!startDate || !endDate) {
-      setBookError("Pick a start and end date.");
+      setBookError(t("equipmentDetails.pickDates"));
       return;
     }
     if (new Date(endDate) < new Date(startDate)) {
-      setBookError("End date can't be before the start date.");
+      setBookError(t("equipmentDetails.endBeforeStart"));
       return;
     }
     setBooking(true);
@@ -67,7 +69,7 @@ export default function EquipmentDetails() {
       .eq("id", id)
       .single();
     if (freshErr || !freshEq?.is_available) {
-      setBookError("This equipment is no longer available.");
+      setBookError(t("equipmentDetails.noLongerAvailable"));
       setBooking(false);
       return;
     }
@@ -78,7 +80,7 @@ export default function EquipmentDetails() {
       .eq("equipment_id", id)
       .in("status", ["Confirmed", "In Use"]);
     if (conflictErr) {
-      setBookError("Couldn't check availability. Try again.");
+      setBookError(t("equipmentDetails.availabilityCheckFailed"));
       setBooking(false);
       return;
     }
@@ -86,7 +88,7 @@ export default function EquipmentDetails() {
       (b) => datesOverlap(b.start_date, b.end_date, startDate, endDate)
     );
     if (overlap) {
-      setBookError("Those dates are already booked. Pick different dates.");
+      setBookError(t("equipmentDetails.datesBooked"));
       setBooking(false);
       return;
     }
@@ -108,20 +110,20 @@ export default function EquipmentDetails() {
 
     setBooking(false);
     if (bookErr) {
-      setBookError(bookErr.message || "Couldn't create the booking. Try again.");
+      setBookError(bookErr.message || t("equipmentDetails.bookingCreateFailed"));
       return;
     }
     navigate(`/booking/${newBooking.id}`);
   };
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">Loading…</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">{t("common.loading")}</div>;
   }
   if (notFound || !eq) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-paper/60">This listing doesn't exist or was removed.</p>
-        <Button variant="outline" onClick={() => navigate("/recommendations")}>Back to matches</Button>
+        <p className="text-paper/60">{t("equipmentDetails.notFound")}</p>
+        <Button variant="outline" onClick={() => navigate("/recommendations")}>{t("equipmentDetails.backToMatches")}</Button>
       </div>
     );
   }
@@ -129,7 +131,7 @@ export default function EquipmentDetails() {
   return (
     <main className="mx-auto max-w-6xl px-5 pb-28 pt-6 md:px-8 md:pb-16 md:pt-10">
       <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-paper/50 hover:text-paper">
-        <ChevronLeft size={16} /> Back
+        <ChevronLeft size={16} /> {t("common.back")}
       </button>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[1.3fr_1fr]">
@@ -138,50 +140,50 @@ export default function EquipmentDetails() {
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10">
             <EquipmentArt category={artCategoryFor(eq.equipment_type)} className="h-full w-full" />
             <div className="absolute left-4 top-4 flex gap-2">
-              <Badge tone={eq.is_available ? "leaf" : "rust"}>{eq.is_available ? "Available" : "Paused"}</Badge>
+              <Badge tone={eq.is_available ? "leaf" : "rust"}>{eq.is_available ? t("equipmentDetails.available") : t("equipmentDetails.paused")}</Badge>
             </div>
           </div>
 
           <Reveal className="mt-10">
-            <h2 className="font-display text-lg font-semibold text-paper">Specifications</h2>
+            <h2 className="font-display text-lg font-semibold text-paper">{t("equipmentDetails.specifications")}</h2>
             <div className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.02] font-mono text-sm">
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">Type</span>
+                <span className="text-paper/45">{t("equipmentDetails.type")}</span>
                 <span className="text-paper">{equipmentTypeLabel(eq.equipment_type)}</span>
               </div>
               {eq.hp != null && (
                 <div className="flex justify-between px-5 py-3">
-                  <span className="text-paper/45">Horsepower</span>
+                  <span className="text-paper/45">{t("equipmentDetails.horsepower")}</span>
                   <span className="text-paper">{eq.hp} HP</span>
                 </div>
               )}
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">Operations</span>
+                <span className="text-paper/45">{t("equipmentDetails.operations")}</span>
                 <span className="text-paper text-right">
                   {(eq.compatible_operations || []).map(operationLabel).join(", ") || "—"}
                 </span>
               </div>
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">Crops</span>
+                <span className="text-paper/45">{t("equipmentDetails.crops")}</span>
                 <span className="text-paper text-right">
-                  {(eq.compatible_crops || []).map(cropLabel).join(", ") || "Any crop"}
+                  {(eq.compatible_crops || []).map(cropLabel).join(", ") || t("equipmentDetails.anyCrop")}
                 </span>
               </div>
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">Service radius</span>
+                <span className="text-paper/45">{t("equipmentDetails.serviceRadius")}</span>
                 <span className="text-paper">{eq.service_area_radius_km} km</span>
               </div>
             </div>
           </Reveal>
 
           <Reveal delay={0.1} className="mt-10">
-            <h2 className="font-display text-lg font-semibold text-paper">Owner</h2>
+            <h2 className="font-display text-lg font-semibold text-paper">{t("equipmentDetails.ownerLabel")}</h2>
             <div className="mt-4 flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-wheat/20 font-display text-lg font-bold text-wheat">
                 {(eq.users?.name || "O").charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <div className="font-medium text-paper">{eq.users?.name || "Owner"}</div>
+                <div className="font-medium text-paper">{eq.users?.name || t("common.owner")}</div>
                 {eq.location_label && (
                   <div className="flex items-center gap-1 text-xs text-paper/50"><MapPin size={12} /> {eq.location_label}</div>
                 )}
@@ -210,17 +212,17 @@ export default function EquipmentDetails() {
 
             {isOwnListing ? (
               <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-paper/50">
-                This is your own listing.
+                {t("equipmentDetails.ownListing")}
               </p>
             ) : !eq.is_available ? (
               <p className="mt-6 rounded-xl border border-rust/30 bg-rust/10 px-4 py-3 text-center text-sm text-rust">
-                Currently paused by the owner.
+                {t("equipmentDetails.pausedByOwner")}
               </p>
             ) : (
               <>
                 <div className="mt-5 space-y-3">
                   <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">Start date</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">{t("equipmentDetails.startDate")}</label>
                     <input
                       type="date"
                       value={startDate}
@@ -229,7 +231,7 @@ export default function EquipmentDetails() {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">End date</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">{t("equipmentDetails.endDate")}</label>
                     <input
                       type="date"
                       value={endDate}
@@ -242,9 +244,9 @@ export default function EquipmentDetails() {
                 {bookError && <p className="mt-3 text-sm text-red-400">{bookError}</p>}
 
                 <Button variant="primary" className="mt-6 w-full" onClick={requestBooking} disabled={booking}>
-                  {booking ? "Sending request…" : "Request to book"}
+                  {booking ? t("equipmentDetails.sendingRequest") : t("equipmentDetails.requestToBook")}
                 </Button>
-                <p className="mt-3 text-center text-xs text-paper/40">Owner will accept or reject your request.</p>
+                <p className="mt-3 text-center text-xs text-paper/40">{t("equipmentDetails.ownerWillRespond")}</p>
               </>
             )}
           </div>

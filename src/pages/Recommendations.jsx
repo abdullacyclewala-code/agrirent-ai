@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { MapPin, SlidersHorizontal, Pencil, ChevronDown, Star, Info } from "lucide-react";
 import taxonomy from "../data/taxonomy.json";
 import { Button, MatchRing, Reveal } from "../components/ui/Primitives.jsx";
@@ -8,6 +9,7 @@ import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
 import { artCategoryFor, equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 
 export default function Recommendations() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [requirementId, setRequirementId] = useState(null);
@@ -45,7 +47,7 @@ export default function Recommendations() {
   const rest = sorted.slice(1);
 
   if (results === null) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">Loading matches…</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">{t("recommendations.loadingMatches")}</div>;
   }
 
   return (
@@ -55,54 +57,54 @@ export default function Recommendations() {
         <div className="flex flex-wrap items-center gap-2 text-sm text-paper/70">
           <span className="font-display font-semibold text-paper">{cropLabel} · {opLabel}</span>
           <span className="text-paper/30">·</span>
-          <span>{job?.land} acres</span>
+          <span>{job?.land} {t("describeJob.acres")}</span>
           <span className="text-paper/30">·</span>
-          <span className="flex items-center gap-1"><MapPin size={13} /> {job?.location || "your area"}</span>
+          <span className="flex items-center gap-1"><MapPin size={13} /> {job?.location || t("recommendations.yourArea")}</span>
         </div>
         <Link to="/describe-job" className="flex items-center gap-1.5 text-sm font-medium text-wheat hover:text-[#f3c162]">
-          <Pencil size={14} /> Edit
+          <Pencil size={14} /> {t("recommendations.edit")}
         </Link>
       </div>
 
       {relaxedHp && (
         <div className="mb-6 flex items-start gap-2 rounded-xl border border-sky/30 bg-sky/10 px-4 py-3 text-sm text-sky">
           <Info size={16} className="mt-0.5 shrink-0" />
-          <span>No exact horsepower match nearby — showing equipment that fits your crop and operation, but HP may be outside the typical range for this job size.</span>
+          <span>{t("recommendations.relaxedHpNotice")}</span>
         </div>
       )}
 
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">{sorted.length} matches found</h1>
+          <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">
+            {t("recommendations.matchesFound", { count: sorted.length })}
+          </h1>
           <p className="mt-1 text-sm text-paper/50">
-            {rankedBy === "ml"
-              ? "Ranked by our AI matching model — best fit first."
-              : "Ranked by our rules-based matching — best fit first."}
+            {rankedBy === "ml" ? t("recommendations.rankedByMl") : t("recommendations.rankedByRules")}
           </p>
         </div>
         <button
           onClick={() => setFiltersOpen((v) => !v)}
           className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-paper hover:border-white/25 md:hidden"
         >
-          <SlidersHorizontal size={15} /> Sort
+          <SlidersHorizontal size={15} /> {t("recommendations.sort")}
         </button>
       </div>
 
       {sorted.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-16 text-center">
-          <p className="text-paper/60">No equipment matches this job yet.</p>
-          <p className="mt-1 text-sm text-paper/40">Try a different crop, operation, or check back once more owners list equipment.</p>
+          <p className="text-paper/60">{t("recommendations.noMatches")}</p>
+          <p className="mt-1 text-sm text-paper/40">{t("recommendations.noMatchesHint")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-8 md:grid-cols-[200px_1fr]">
           {/* sort rail */}
           <aside className={`${filtersOpen ? "block" : "hidden"} md:block`}>
             <div className="sticky top-24">
-              <div className="mb-3 font-mono text-xs uppercase tracking-wide text-paper/40">Sort by</div>
+              <div className="mb-3 font-mono text-xs uppercase tracking-wide text-paper/40">{t("recommendations.sortBy")}</div>
               <div className="flex flex-col gap-1">
                 {[
-                  ["match", "Best match"],
-                  ["price", "Lowest price"],
+                  ["match", t("recommendations.sortMatch")],
+                  ["price", t("recommendations.sortPrice")],
                 ].map(([k, label]) => (
                   <button
                     key={k}
@@ -201,9 +203,9 @@ export default function Recommendations() {
                               </div>
                               <div className="mt-3 flex items-center gap-3">
                                 <Link to={requirementId ? `/equipment/${eq.id}?requirementId=${requirementId}` : `/equipment/${eq.id}`}>
-                                  <Button variant="outline" className="!px-4 !py-2 text-xs">View details</Button>
+                                  <Button variant="outline" className="!px-4 !py-2 text-xs">{t("recommendations.viewDetails")}</Button>
                                 </Link>
-                                <span className="text-xs text-paper/40">Owner: {eq.owner_name}</span>
+                                <span className="text-xs text-paper/40">{t("recommendations.owner", { name: eq.owner_name })}</span>
                               </div>
                             </div>
                           </div>

@@ -1,17 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, MapPin, Pause, Play, Plus, Pencil, Trash2, Bell, BellOff } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { ShieldCheck, MapPin, Pause, Play, Plus, Pencil, Trash2, Bell, BellOff, Languages } from "lucide-react";
 import { Button, StatTile, Reveal } from "../components/ui/Primitives.jsx";
+import LanguageSwitcher from "../components/ui/LanguageSwitcher.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../lib/supabase.js";
 import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 import { enablePushNotifications } from "../lib/push.js";
 
-const tabs = ["Overview", "My Listings", "Settings"];
-
 export default function Profile() {
-  const [tab, setTab] = useState("Overview");
+  const { t } = useTranslation();
+  const tabs = [t("profile.tabOverview"), t("profile.tabListings"), t("profile.tabSettings")];
+  const [tab, setTab] = useState(tabs[0]);
   const { profile, user, signOut } = useAuth();
   const [listings, setListings] = useState([]);
   const [loadingListings, setLoadingListings] = useState(true);
@@ -54,14 +56,14 @@ export default function Profile() {
   };
 
   const deleteListing = async (item) => {
-    if (!window.confirm(`Delete "${item.name}"? This can't be undone.`)) return;
+    if (!window.confirm(t("profile.confirmDelete", { name: item.name }))) return;
     setBusyId(item.id);
     const { error } = await supabase.from("equipment").delete().eq("id", item.id);
     if (!error) fetchListings();
     setBusyId(null);
   };
 
-  const displayName = profile?.name || user?.email || "Your profile";
+  const displayName = profile?.name || user?.email || t("profile.tabOverview");
   const initials = displayName
     .split(" ")
     .filter(Boolean)
@@ -87,21 +89,21 @@ export default function Profile() {
             </p>
           )}
         </div>
-        <Button variant="ghost" onClick={signOut}>Sign out</Button>
+        <Button variant="ghost" onClick={signOut}>{t("profile.signOut")}</Button>
       </div>
 
       {/* tabs */}
       <div className="mt-8 flex gap-1 border-b border-white/10">
-        {tabs.map((t) => (
+        {tabs.map((tb) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tb}
+            onClick={() => setTab(tb)}
             className={`relative px-4 py-3 text-sm font-medium transition-colors ${
-              tab === t ? "text-wheat" : "text-paper/50 hover:text-paper"
+              tab === tb ? "text-wheat" : "text-paper/50 hover:text-paper"
             }`}
           >
-            {t}
-            {tab === t && (
+            {tb}
+            {tab === tb && (
               <motion.div layoutId="profile-tab" className="absolute inset-x-0 -bottom-px h-0.5 bg-wheat" />
             )}
           </button>
@@ -109,47 +111,47 @@ export default function Profile() {
       </div>
 
       <AnimatePresence mode="wait">
-        {tab === "Overview" && (
+        {tab === tabs[0] && (
           <motion.div key="overview" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }}>
             <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <StatTile label="Listed" value={listings.length} />
-              <StatTile label="Active" value={listings.filter((l) => l.is_available).length} />
-              <StatTile label="Role" value={profile?.is_owner && !profile?.is_farmer ? "Owner" : "Farmer"} />
-              <StatTile label="Bookings" value="—" sub="Tracked once you book" />
+              <StatTile label={t("profile.statListed")} value={listings.length} />
+              <StatTile label={t("profile.statActive")} value={listings.filter((l) => l.is_available).length} />
+              <StatTile label={t("profile.statRole")} value={profile?.is_owner && !profile?.is_farmer ? t("common.owner") : t("common.farmer")} />
+              <StatTile label={t("profile.statBookings")} value="—" sub={t("profile.statBookingsSub")} />
             </div>
 
             <div className="mt-10">
-              <h2 className="mb-4 font-display text-lg font-semibold text-paper">Account</h2>
+              <h2 className="mb-4 font-display text-lg font-semibold text-paper">{t("profile.accountTitle")}</h2>
               <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-sm">
                 <div className="flex justify-between py-1.5">
-                  <span className="text-paper/50">Email</span>
+                  <span className="text-paper/50">{t("profile.email")}</span>
                   <span className="text-paper">{user?.email}</span>
                 </div>
                 <div className="flex justify-between py-1.5">
-                  <span className="text-paper/50">Current mode</span>
-                  <span className="text-paper">{profile?.is_owner && !profile?.is_farmer ? "Owner" : "Farmer"}</span>
+                  <span className="text-paper/50">{t("profile.currentMode")}</span>
+                  <span className="text-paper">{profile?.is_owner && !profile?.is_farmer ? t("common.owner") : t("common.farmer")}</span>
                 </div>
               </div>
             </div>
           </motion.div>
         )}
 
-        {tab === "My Listings" && (
+        {tab === tabs[1] && (
           <motion.div key="listings" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }} className="mt-8">
             <div className="mb-5 flex items-center justify-between">
-              <p className="text-sm text-paper/50">Equipment you've listed for rent.</p>
+              <p className="text-sm text-paper/50">{t("profile.listingsSubtitle")}</p>
               <Link to="/equipment/new">
-                <Button variant="primary" className="!px-4 !py-2.5 text-sm"><Plus size={15} /> Add equipment</Button>
+                <Button variant="primary" className="!px-4 !py-2.5 text-sm"><Plus size={15} /> {t("profile.addEquipment")}</Button>
               </Link>
             </div>
 
             {loadingListings ? (
-              <div className="py-10 text-center text-sm text-paper/40">Loading your listings…</div>
+              <div className="py-10 text-center text-sm text-paper/40">{t("profile.loadingListings")}</div>
             ) : listings.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-14 text-center">
-                <p className="text-sm text-paper/50">You haven't listed any equipment yet.</p>
+                <p className="text-sm text-paper/50">{t("profile.noListings")}</p>
                 <Link to="/equipment/new" className="mt-4 inline-block">
-                  <Button variant="outline" className="!px-4 !py-2 text-sm">List your first equipment</Button>
+                  <Button variant="outline" className="!px-4 !py-2 text-sm">{t("profile.listFirst")}</Button>
                 </Link>
               </div>
             ) : (
@@ -167,7 +169,7 @@ export default function Profile() {
                         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
                           l.is_available ? "bg-leaf/15 text-leaf" : "bg-white/10 text-paper/50"
                         }`}>
-                          {l.is_available ? "active" : "paused"}
+                          {l.is_available ? t("profile.active") : t("profile.paused")}
                         </span>
                       </div>
                     </div>
@@ -182,7 +184,7 @@ export default function Profile() {
                         onClick={() => toggleAvailability(l)}
                       >
                         {l.is_available ? <Pause size={14} /> : <Play size={14} />}
-                        {l.is_available ? "Pause" : "Activate"}
+                        {l.is_available ? t("profile.pause") : t("profile.activate")}
                       </Button>
                       <Button
                         variant="ghost"
@@ -200,15 +202,15 @@ export default function Profile() {
           </motion.div>
         )}
 
-        {tab === "Settings" && (
+        {tab === tabs[2] && (
           <motion.div key="settings" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.35 }} className="mt-8 space-y-3">
             <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
               <div>
                 <div className="flex items-center gap-2 text-sm font-medium text-paper">
-                  <Bell size={15} className="text-wheat" /> Booking notifications
+                  <Bell size={15} className="text-wheat" /> {t("profile.notificationsTitle")}
                 </div>
                 <p className="mt-1 text-xs text-paper/50">
-                  Get notified when a booking is accepted, rejected, or completed.
+                  {t("profile.notificationsDesc")}
                 </p>
                 {pushResult && (
                   <p className={`mt-2 flex items-center gap-1 text-xs ${pushResult.ok ? "text-leaf" : "text-rust"}`}>
@@ -217,11 +219,24 @@ export default function Profile() {
                 )}
               </div>
               <Button variant="outline" className="!px-4 !py-2 text-xs" disabled={pushBusy} onClick={handleEnableNotifications}>
-                {pushBusy ? "Enabling…" : "Turn on"}
+                {pushBusy ? t("profile.enabling") : t("profile.turnOn")}
               </Button>
             </div>
+
+            <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
+              <div>
+                <div className="flex items-center gap-2 text-sm font-medium text-paper">
+                  <Languages size={15} className="text-wheat" /> {t("profile.languageTitle")}
+                </div>
+                <p className="mt-1 text-xs text-paper/50">
+                  {t("profile.languageDesc")}
+                </p>
+              </div>
+              <LanguageSwitcher />
+            </div>
+
             <div className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4 text-sm text-paper/50">
-              Payment methods and language settings are planned for a later phase.
+              {t("profile.paymentNote")}
             </div>
           </motion.div>
         )}

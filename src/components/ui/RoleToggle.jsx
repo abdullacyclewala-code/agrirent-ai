@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext.jsx";
 
 export default function RoleToggle({ className = "" }) {
+  const { t } = useTranslation();
   const { profile, toggleRole } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -18,7 +20,7 @@ export default function RoleToggle({ className = "" }) {
     const roleField = role === "farmer" ? "is_farmer" : "is_owner";
     const { error: err } = await toggleRole(roleField);
     setBusy(false);
-    if (err) setError(err.message || "Couldn't switch roles. Try again.");
+    if (err) setError(err.message || t("common.roleSwitchFailed"));
   };
 
   return (
@@ -36,7 +38,7 @@ export default function RoleToggle({ className = "" }) {
             activeRole === "farmer" ? "bg-wheat text-ink font-medium" : "text-white/60"
           }`}
         >
-          Farmer
+          {t("common.farmer")}
         </button>
         <button
           type="button"
@@ -46,7 +48,7 @@ export default function RoleToggle({ className = "" }) {
             activeRole === "owner" ? "bg-wheat text-ink font-medium" : "text-white/60"
           }`}
         >
-          Owner
+          {t("common.owner")}
         </button>
       </div>
       {error && (

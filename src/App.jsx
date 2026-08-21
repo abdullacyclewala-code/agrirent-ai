@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Bell } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import NavBar from "./components/layout/NavBar.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import DescribeJob from "./pages/DescribeJob.jsx";
@@ -45,6 +46,13 @@ export default function App() {
   const location = useLocation();
   const { isAuthenticated, loading } = useAuth();
   const [pushToast, setPushToast] = useState(null);
+  const { t, i18n } = useTranslation();
+
+  // Phase 6 item 1 — keep <html lang="…"> (index.html hardcoded "en" before
+  // this) in sync with the active i18next language, for accessibility/SEO.
+  useEffect(() => {
+    document.documentElement.lang = i18n.resolvedLanguage || "en";
+  }, [i18n.resolvedLanguage]);
 
   // Phase 4 — surface FCM messages that arrive while the tab is open. Only
   // ever fires if the person opted in via Profile > Settings and Firebase is
@@ -69,7 +77,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-ink text-white/60 text-sm">
-        Loading…
+        {t("common.loading")}
       </div>
     );
   }

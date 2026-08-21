@@ -1,34 +1,21 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Sparkles, Tractor, Radar } from "lucide-react";
 import FieldScene from "../three/FieldScene.jsx";
 import { Button, Reveal, SectionLabel } from "../components/ui/Primitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const steps = [
-  {
-    n: "01",
-    title: "Describe your job",
-    desc: "Tell us your crop, operation, land size, location and date — guided, not a form.",
-    icon: Sparkles,
-  },
-  {
-    n: "02",
-    title: "Get matched by the model",
-    desc: "Our ML model ranks nearby equipment by fit, availability, distance and price.",
-    icon: Radar,
-  },
-  {
-    n: "03",
-    title: "Book and track",
-    desc: "Confirm in a tap, then track your equipment from dispatch to field.",
-    icon: Tractor,
-  },
-];
-
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { profile } = useAuth();
   const isOwnerMode = profile?.is_owner && !profile?.is_farmer;
+
+  const steps = [
+    { n: "01", title: t("dashboard.step1Title"), desc: t("dashboard.step1Desc"), icon: Sparkles },
+    { n: "02", title: t("dashboard.step2Title"), desc: t("dashboard.step2Desc"), icon: Radar },
+    { n: "03", title: t("dashboard.step3Title"), desc: t("dashboard.step3Desc"), icon: Tractor },
+  ];
 
   return (
     <main className="grain">
@@ -43,11 +30,11 @@ export default function Dashboard() {
               transition={{ duration: 0.7, delay: 0.05 }}
               className="font-display text-4xl font-bold leading-[1.05] text-paper sm:text-5xl lg:text-6xl"
             >
-              The right machine
+              {t("dashboard.heroTitleLine1")}
               <br />
-              for the right <span className="text-wheat">field</span>,
+              {t("dashboard.heroTitleLine2")} <span className="text-wheat">{t("dashboard.heroTitleField")}</span>,
               <br />
-              at the right time.
+              {t("dashboard.heroTitleLine3")}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 22 }}
@@ -55,8 +42,7 @@ export default function Dashboard() {
               transition={{ duration: 0.7, delay: 0.15 }}
               className="mt-5 max-w-md text-base text-paper/60"
             >
-              Kisan Match connects farmers with nearby tractors, harvesters and implements —
-              matched by a model that understands your crop, land and schedule.
+              {t("dashboard.heroSubtitle")}
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 22 }}
@@ -66,7 +52,7 @@ export default function Dashboard() {
             >
               <Link to={isOwnerMode ? "/equipment/new" : "/describe-job"}>
                 <Button variant="primary">
-                  {isOwnerMode ? "List your equipment" : "Describe your job"} <ArrowUpRight size={16} />
+                  {isOwnerMode ? t("dashboard.listEquipment") : t("dashboard.describeJob")} <ArrowUpRight size={16} />
                 </Button>
               </Link>
             </motion.div>
@@ -82,7 +68,7 @@ export default function Dashboard() {
 
       <div className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-20">
         {/* ---------------- HOW IT WORKS ---------------- */}
-        <SectionLabel eyebrow="Process" title="Three steps from field to finish" />
+        <SectionLabel eyebrow={t("dashboard.processEyebrow")} title={t("dashboard.processTitle")} />
         <div className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
           <div className="absolute left-0 right-0 top-8 hidden h-px bg-white/10 md:block" />
           {steps.map((s, i) => (

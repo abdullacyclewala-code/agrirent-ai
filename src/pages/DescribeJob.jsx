@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, MapPin, Radar, Check, LocateFixed, Sparkles, Loader2, PenLine } from "lucide-react";
 import taxonomy from "../data/taxonomy.json";
 import { Button, Chip } from "../components/ui/Primitives.jsx";
@@ -36,6 +37,7 @@ function StepShell({ title, sub, children }) {
 }
 
 export default function DescribeJob() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [step, setStep] = useState(0);
@@ -89,7 +91,7 @@ export default function DescribeJob() {
     if (!result) {
       setParseNotice({
         ok: false,
-        message: "Couldn't reach the AI parser right now — no problem, just fill in the steps below.",
+        message: t("describeJob.parseFailed"),
       });
       setStep(1);
       return;
@@ -108,9 +110,7 @@ export default function DescribeJob() {
 
     setParseNotice({
       ok: true,
-      message: opValid
-        ? "Got it — pre-filled below from your description. Check each step and adjust anything that's off."
-        : "Understood most of it — please confirm the operation below.",
+      message: opValid ? t("describeJob.parseOkFilled") : t("describeJob.parseOkPartial"),
     });
     setStep(1);
   };
@@ -155,7 +155,7 @@ export default function DescribeJob() {
 
       const normalized = (equipmentRows || []).map((row) => ({
         ...row,
-        owner_name: row.users?.name || "Owner",
+        owner_name: row.users?.name || t("common.owner"),
       }));
 
       const { results, relaxedHp } = runRulesFilter(normalized, parsed_json, user?.id);
@@ -215,7 +215,7 @@ export default function DescribeJob() {
       setTimeout(() => navigate("/recommendations"), 1800);
     } catch (err) {
       setScanning(false);
-      setSubmitError(err.message || "Something went wrong finding matches. Please try again.");
+      setSubmitError(err.message || t("describeJob.submitError"));
     }
   };
 
@@ -247,15 +247,15 @@ export default function DescribeJob() {
         {STEP_KEYS[step] === "freetext" && (
           <StepShell
             key="freetext"
-            title="Describe your job, in your own words"
-            sub="English, Hindi, Marathi, or mixed — however you'd normally say it. Or skip and fill it in step by step."
+            title={t("describeJob.freetextTitle")}
+            sub={t("describeJob.freetextSub")}
           >
             <div className="relative">
               <Sparkles className="pointer-events-none absolute left-4 top-4 text-wheat/60" size={18} />
               <textarea
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
-                placeholder="e.g. Mujhe 5 acre kapas ki jotai karni hai agle hafte…"
+                placeholder={t("describeJob.freetextPlaceholder")}
                 rows={4}
                 disabled={parsing}
                 className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-paper placeholder:text-paper/30 focus:border-wheat disabled:opacity-50"
@@ -278,11 +278,11 @@ export default function DescribeJob() {
               <Button variant="primary" onClick={handleFreeTextSubmit} disabled={parsing}>
                 {parsing ? (
                   <>
-                    <Loader2 className="animate-spin" size={16} /> Understanding your job…
+                    <Loader2 className="animate-spin" size={16} /> {t("describeJob.parsingLabel")}
                   </>
                 ) : (
                   <>
-                    <Sparkles size={16} /> {freeText.trim() ? "Parse with AI" : "Continue"}
+                    <Sparkles size={16} /> {freeText.trim() ? t("describeJob.parseWithAi") : t("describeJob.continueBtn")}
                   </>
                 )}
               </Button>
@@ -291,14 +291,14 @@ export default function DescribeJob() {
                 disabled={parsing}
                 className="flex items-center gap-1.5 text-sm font-medium text-paper/50 hover:text-paper disabled:opacity-40"
               >
-                <PenLine size={14} /> Skip, I'll fill it in manually
+                <PenLine size={14} /> {t("describeJob.skipManual")}
               </button>
             </div>
           </StepShell>
         )}
 
         {STEP_KEYS[step] === "crop" && (
-          <StepShell key="crop" title="What are you growing?" sub="This helps us match equipment built for your crop.">
+          <StepShell key="crop" title={t("describeJob.cropTitle")} sub={t("describeJob.cropSub")}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               {crops.map((c) => (
                 <button
@@ -319,7 +319,7 @@ export default function DescribeJob() {
         )}
 
         {STEP_KEYS[step] === "operation" && (
-          <StepShell key="operation" title="What's the job?" sub="Choose the operation you need done.">
+          <StepShell key="operation" title={t("describeJob.operationTitle")} sub={t("describeJob.operationSub")}>
             <div className="flex flex-col gap-3">
               {operations.map((op) => (
                 <button
@@ -347,11 +347,11 @@ export default function DescribeJob() {
         )}
 
         {STEP_KEYS[step] === "land" && (
-          <StepShell key="land" title="How much land?" sub="Drag to set the area for this job.">
+          <StepShell key="land" title={t("describeJob.landTitle")} sub={t("describeJob.landSub")}>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
               <div className="font-display text-6xl font-bold text-wheat">
                 {form.land}
-                <span className="ml-2 text-2xl text-paper/50">acres</span>
+                <span className="ml-2 text-2xl text-paper/50">{t("describeJob.acres")}</span>
               </div>
               <input
                 type="range"
@@ -364,20 +364,20 @@ export default function DescribeJob() {
               />
               <div className="mt-2 flex justify-between font-mono text-xs text-paper/40">
                 <span>0.5</span>
-                <span>30 acres</span>
+                <span>30 {t("describeJob.acres")}</span>
               </div>
             </div>
           </StepShell>
         )}
 
         {STEP_KEYS[step] === "location" && (
-          <StepShell key="location" title="Where's the field?" sub="Enter your village or let us use your current location.">
+          <StepShell key="location" title={t("describeJob.locationTitle")} sub={t("describeJob.locationSub")}>
             <div className="relative">
               <MapPin className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-paper/40" size={18} />
               <input
                 value={form.location}
                 onChange={(e) => set("location", e.target.value)}
-                placeholder="Village, district — e.g. Rurka, Ludhiana"
+                placeholder={t("describeJob.locationPlaceholder")}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-paper placeholder:text-paper/30 focus:border-wheat"
               />
             </div>
@@ -385,7 +385,7 @@ export default function DescribeJob() {
               onClick={() => set("location", "Village Rurka, Ludhiana (current location)")}
               className="mt-3 flex items-center gap-2 text-sm font-medium text-sky hover:text-sky-dim"
             >
-              <LocateFixed size={15} /> Use current location
+              <LocateFixed size={15} /> {t("describeJob.useCurrentLocation")}
             </button>
             <div className="mt-6 flex flex-wrap gap-2">
               {["Ludhiana", "Khanna", "Doraha", "Sahnewal"].map((d) => (
@@ -398,7 +398,7 @@ export default function DescribeJob() {
         )}
 
         {STEP_KEYS[step] === "date" && (
-          <StepShell key="date" title="When do you need it?" sub="Pick the date you'd like the work to start.">
+          <StepShell key="date" title={t("describeJob.dateTitle")} sub={t("describeJob.dateSub")}>
             <input
               type="date"
               value={form.date}
@@ -408,7 +408,7 @@ export default function DescribeJob() {
             <textarea
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
-              placeholder="Anything else the owner should know? (optional)"
+              placeholder={t("describeJob.notesPlaceholder")}
               rows={3}
               className="mt-6 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-paper placeholder:text-paper/30 focus:border-wheat"
             />
@@ -416,20 +416,20 @@ export default function DescribeJob() {
         )}
 
         {STEP_KEYS[step] === "review" && (
-          <StepShell key="review" title="Review your job" sub="We'll match this against nearby equipment.">
+          <StepShell key="review" title={t("describeJob.reviewTitle")} sub={t("describeJob.reviewSub")}>
             {form.llmProviderUsed && (
               <div className="mb-4 flex items-center gap-2 rounded-xl border border-wheat/20 bg-wheat/5 px-4 py-2.5 text-xs text-wheat">
-                <Sparkles size={13} /> Pre-filled from your description ({form.llmProviderUsed}) — double-check before continuing.
+                <Sparkles size={13} /> {t("describeJob.prefilledNotice", { provider: form.llmProviderUsed })}
               </div>
             )}
             <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
               {[
-                ["Crop", crops.find((c) => c.id === form.crop)?.label],
-                ["Operation", operations.find((o) => o.id === form.operation)?.label],
-                ["Land size", `${form.land} acres`],
-                ["Location", form.location || "—"],
-                ["Date", form.date || "—"],
-                ["Notes", form.notes || "None"],
+                [t("describeJob.reviewCrop"), crops.find((c) => c.id === form.crop)?.label],
+                [t("describeJob.reviewOperation"), operations.find((o) => o.id === form.operation)?.label],
+                [t("describeJob.reviewLand"), `${form.land} ${t("describeJob.acres")}`],
+                [t("describeJob.reviewLocation"), form.location || "—"],
+                [t("describeJob.reviewDate"), form.date || "—"],
+                [t("describeJob.reviewNotes"), form.notes || t("describeJob.reviewNone")],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between px-5 py-4 text-sm">
                   <span className="text-paper/50">{label}</span>
@@ -443,10 +443,10 @@ export default function DescribeJob() {
 
       <div className="mt-10 flex items-center justify-between">
         <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-paper/60 hover:text-paper">
-          <ArrowLeft size={16} /> Back
+          <ArrowLeft size={16} /> {t("common.back")}
         </button>
         <Button variant="primary" onClick={goNext} disabled={!canNext}>
-          {step === STEP_KEYS.length - 1 ? "Find matches" : "Continue"} <ArrowRight size={16} />
+          {step === STEP_KEYS.length - 1 ? t("describeJob.findMatches") : t("describeJob.continueBtn")} <ArrowRight size={16} />
         </Button>
       </div>
     </main>
@@ -454,11 +454,12 @@ export default function DescribeJob() {
 }
 
 function ScanningScreen({ form }) {
+  const { t } = useTranslation();
   const messages = [
-    "Reading your job details…",
-    "Scanning equipment within range…",
-    "Checking crop & operation fit…",
-    "Ranking by fit and price…",
+    t("describeJob.scanningMsg1"),
+    t("describeJob.scanningMsg2"),
+    t("describeJob.scanningMsg3"),
+    t("describeJob.scanningMsg4"),
   ];
   const [msgIndex, setMsgIndex] = useState(0);
   useEffect(() => {
@@ -492,10 +493,10 @@ function ScanningScreen({ form }) {
           <Radar size={32} />
         </motion.div>
       </div>
-      <h2 className="mt-8 font-display text-xl font-semibold text-paper">Finding your matches</h2>
+      <h2 className="mt-8 font-display text-xl font-semibold text-paper">{t("describeJob.scanningTitle")}</h2>
       <p className="mt-2 font-mono text-sm text-moss-light">{messages[msgIndex]}</p>
       <p className="mt-6 max-w-xs text-xs text-paper/40">
-        {form.land} acres · {form.location || "your area"}
+        {form.land} {t("describeJob.acres")} · {form.location || t("describeJob.yourArea")}
       </p>
     </main>
   );
