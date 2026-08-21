@@ -35,6 +35,12 @@ double-booking auto-conflict) are handled entirely client-side
 (`src/lib/bookingLifecycle.js`) since they're just ordinary `bookings`
 UPDATEs — no backend involvement needed.
 
+**Phase 6 item 2:** no new endpoint either — `app/multilingual_client.py`
+is a new internal HTTP client, called from `app/semantic_match.py`, that
+reaches a separate service (`/hf-space-semantic`, deployed to a free
+Hugging Face Space) for §6.2a's multilingual double-check. See
+"Multilingual semantic double-check" below.
+
 This backend reads two things (`push_tokens` for notifications,
 `bookings`+`requirements` for retraining), both via the Supabase REST API
 using the service-role key — still no Postgres driver/ORM, no auth of its
@@ -144,6 +150,62 @@ here.
 Until steps 1–9 are done, `Turn on notifications` in Profile > Settings will
 say notifications aren't configured yet, and the webhook endpoint silently
 returns `{"sent": 0}` — nothing else in the booking flow depends on this.
+
+## Multilingual semantic double-check (Phase 6, optional)
+
+§6.2's vocabulary-mismatch fallback (`app/semantic_match.py`) originally
+shipped in Phase 3 with exact taxonomy match → synonym map → `difflib`
+lexical similarity only — no real embedding model, since
+`sentence-transformers` needs `torch` (~800MB+) and doesn't fit this
+service's 512MB Render free tier. Phase 6 closes that gap without changing
+that constraint: the real model
+(`paraphrase-multilingual-MiniLM-L12-v2`, 50+ languages incl. Hindi/Marathi)
+runs in a **separate** service — `/hf-space-semantic` at the repo root,
+deployed to a free Hugging Face Space (Docker SDK, 16GB free CPU RAM) — and
+this backend calls it over HTTP via `app/multilingual_client.py`.
+
+Per §6.2a, this isn't just an outage fallback for the LLM — it runs as a
+double-check/corrector on every `crop`/`operation`/`equipment_type` field
+the LLM produces that didn't already resolve via the free exact-match/
+synonym-map lookup, catching dialectal Hindi/Marathi/Hinglish terms the LLM
+mis-maps. See `app/semantic_match.py`'s docstring for the exact fallback
+order and `hf-space-semantic/README.md` for the service's own API and
+cold-start behaviour.
+
+**This is entirely optional and degrades gracefully, same as every other
+external call in this project:** with `HF_SPACE_URL` unset,
+`semantic_match.py` skips straight to its `difflib` last resort — nothing
+breaks, vocabulary correction just isn't multilingual-embedding-based that
+session (same as the Phase 3 baseline).
+
+**Manual setup required (cannot be done from a repo commit alone):** a
+Hugging Face Space has to be created through a Hugging Face account and the
+`hf-space-semantic/` folder pushed to *that* Space's own git remote — full
+step-by-step instructions are in `hf-space-semantic/README.md` "Deploying
+this". Once deployed, set these on this Render service:
+
+- `HF_SPACE_URL` — the Space's URL, e.g.
+  `https://<your-username>-agrirent-ai-semantic.hf.space`.
+- `HF_SPACE_API_TOKEN` — optional, only needed if you set an `API_TOKEN`
+  secret on the Space itself (recommended, since free Spaces are public).
+- `HF_SPACE_TIMEOUT_S` — optional, defaults to `45` (seconds). Free Spaces
+  sleep after inactivity; this covers the documented 30–60s cold-start
+  window before falling back to `difflib`.
+
+Test it once `HF_SPACE_URL` is set (redeploy this backend after adding the
+env var):
+```bash
+curl -X POST http://localhost:8000/requirements/parse \
+  -H "Content-Type: application/json" \
+  -d '{"raw_text": "5 acre kapas ki nangar chalani hai", "language": "hinglish"}'
+```
+Check the response's `confidence_notes` — a corrected field will say
+`"... matched to '...' (semantic fallback, score 0.XX)"`; a score that
+looks like a cosine similarity (typically 0.55–0.95) came from the HF
+Space, a score that looks like a difflib ratio came from the local
+fallback. Render logs also show which path was taken — search for
+`agrirent.multilingual_client` (HF Space attempted) vs. no such line (HF
+Space not configured, went straight to difflib).
 
 ## Deploying to Render (free tier)
 

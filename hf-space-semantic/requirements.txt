@@ -1,0 +1,10 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.9.2
+
+# CPU-only torch keeps the image smaller and the free HF Space CPU tier
+# doesn't have a GPU anyway — no point pulling the CUDA build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.5.1
+
+sentence-transformers==3.3.1
