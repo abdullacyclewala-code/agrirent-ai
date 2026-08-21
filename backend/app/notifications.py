@@ -1,6 +1,7 @@
 """
-Phase 4 — FCM push notifications for booking status changes (master doc
-§4.3 booking states + the "Realtime/Notifications" hosting row in §2).
+Phase 4 — FCM push notifications for booking status changes AND new booking
+requests (master doc §4.3 booking states + the "Realtime/Notifications"
+hosting row in §2).
 
 DISCLOSED SETUP DEPENDENCY (same pattern as Phase 3's Groq/Gemini keys):
 sending real push notifications needs a Firebase project's service-account
@@ -42,6 +43,60 @@ _STATUS_MESSAGES = {
 
 def message_for_status(status: str) -> Optional[str]:
     return _STATUS_MESSAGES.get(status)
+
+
+def _rest_get(path: str, params: dict) -> Optional[dict]:
+    """
+    One-row REST lookup via Supabase's PostgREST, using the service-role
+    key. Returns None (not an exception) on any failure or missing
+    config, so callers can fall back to a generic message instead of
+    breaking the whole notification.
+    """
+    supabase_url = os.getenv("SUPABASE_URL")
+    service_role_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not supabase_url or not service_role_key:
+        return None
+    try:
+        resp = requests.get(
+            f"{supabase_url}/rest/v1/{path}",
+            params=params,
+            headers={
+                "apikey": service_role_key,
+                "Authorization": f"Bearer {service_role_key}",
+                "Accept": "application/vnd.pgrst.object+json",  # ask PostgREST for a single object, not an array
+            },
+            timeout=8,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        logger.warning("notifications: lookup failed for %s (%s)", path, e)
+        return None
+
+
+def new_request_message(farmer_id: Optional[str], equipment_id: Optional[int]) -> str:
+    """
+    Builds the "Priya has requested your Mahindra 265 DI" style message for
+    a new booking request. Falls back to a generic "New booking request"
+    if either name lookup fails — a notification with a slightly less
+    specific message is better than no notification at all.
+    """
+    farmer_name = None
+    equipment_name = None
+
+    if farmer_id:
+        row = _rest_get("users", {"id": f"eq.{farmer_id}", "select": "name"})
+        farmer_name = row.get("name") if row else None
+
+    if equipment_id:
+        row = _rest_get("equipment", {"id": f"eq.{equipment_id}", "select": "name"})
+        equipment_name = row.get("name") if row else None
+
+    if farmer_name and equipment_name:
+        return f"{farmer_name} has requested your {equipment_name}."
+    if equipment_name:
+        return f"You have a new booking request for your {equipment_name}."
+    return "You have a new booking request."
 
 
 @lru_cache(maxsize=1)

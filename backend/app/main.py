@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s:%(name)s:%(message
 from .llm_service import parse_requirement_via_llm, LLMAllProvidersFailed
 from .taxonomy import load_taxonomy
 from .ranking.ranker_service import rank_candidates as _rank_candidates
-from .notifications import send_push_to_tokens, message_for_status, tokens_for_users
+from .notifications import send_push_to_tokens, message_for_status, new_request_message, tokens_for_users
 
 app = FastAPI(title="AgriRent AI Backend", version="0.4.0")
 
@@ -170,40 +170,62 @@ class BookingWebhookIn(BaseModel):
 @app.post("/notifications/booking-webhook")
 def booking_webhook(payload: BookingWebhookIn, x_webhook_secret: str = Header(default="")):
     """
-    Receiver for a Supabase Database Webhook on the `bookings` table (UPDATE
-    event) — this is a human dashboard-configuration step, not code; see
-    backend/README.md "Setting up push notifications". Verifies a shared
-    secret (`WEBHOOK_SECRET`) so this endpoint can't be spammed by anyone who
-    finds the URL.
+    Receiver for a Postgres trigger (pg_net) or a dashboard-created Supabase
+    Database Webhook on the `bookings` table — same payload shape either
+    way (`type`/`table`/`record`/`old_record`), so both work identically
+    here; see backend/README.md "Setting up push notifications". Verifies a
+    shared secret (`WEBHOOK_SECRET`) so this endpoint can't be spammed by
+    anyone who finds the URL.
 
-    Safe to call before that setup exists: with no `FIREBASE_SERVICE_ACCOUNT_JSON`
-    configured, `send_push_to_tokens()` no-ops and this just returns
-    `sent: 0` — same "degrade gracefully, never block the core flow" pattern
-    as the LLM parse endpoint.
+    Handles two events:
+    - INSERT — a farmer just requested a booking. Notifies the OWNER only
+      ("<farmer> has requested your <equipment>"), since the farmer already
+      knows they just submitted the request.
+    - UPDATE — booking status changed (Confirmed/Rejected/In Use/Completed/
+      Cancelled). Notifies both parties (see comment below on why).
+
+    Safe to call before Firebase is configured: with no
+    `FIREBASE_SERVICE_ACCOUNT_JSON` set, `send_push_to_tokens()` no-ops and
+    this just returns `sent: 0` — same "degrade gracefully, never block the
+    core flow" pattern as the LLM parse endpoint.
     """
     expected_secret = os.getenv("WEBHOOK_SECRET")
     if expected_secret and x_webhook_secret != expected_secret:
         raise HTTPException(status_code=401, detail="invalid webhook secret")
 
-    if payload.table != "bookings" or payload.type != "UPDATE":
-        return {"skipped": "not a bookings UPDATE event"}
+    if payload.table != "bookings":
+        return {"skipped": "not a bookings event"}
 
     record = payload.record
-    old_record = payload.old_record or {}
-    new_status = record.get("status")
-    if not new_status or new_status == old_record.get("status"):
-        return {"skipped": "status unchanged"}
 
-    message = message_for_status(new_status)
-    if not message:
-        return {"skipped": f"no notification copy for status '{new_status}'"}
+    if payload.type == "INSERT":
+        owner_id = record.get("owner_id")
+        if not owner_id:
+            return {"skipped": "no owner_id on new booking"}
 
-    # We don't know from the webhook payload which party (farmer or owner)
-    # triggered the change, so — for this MVP — notify both. A farmer
-    # accepting their own cancel, or an owner seeing their own accept, gets
-    # a harmless redundant notification; that's a reasonable trade-off
-    # against the complexity of tracking "who changed it" separately.
-    user_ids = [uid for uid in (record.get("farmer_id"), record.get("owner_id")) if uid]
-    tokens = tokens_for_users(user_ids)
-    sent = send_push_to_tokens(tokens, "AgriRent AI", message)
-    return {"sent": sent, "status": new_status}
+        message = new_request_message(record.get("farmer_id"), record.get("equipment_id"))
+        tokens = tokens_for_users([owner_id])
+        sent = send_push_to_tokens(tokens, "AgriRent AI", message)
+        return {"sent": sent, "event": "new_request"}
+
+    if payload.type == "UPDATE":
+        old_record = payload.old_record or {}
+        new_status = record.get("status")
+        if not new_status or new_status == old_record.get("status"):
+            return {"skipped": "status unchanged"}
+
+        message = message_for_status(new_status)
+        if not message:
+            return {"skipped": f"no notification copy for status '{new_status}'"}
+
+        # We don't know from the webhook payload which party (farmer or owner)
+        # triggered the change, so — for this MVP — notify both. A farmer
+        # accepting their own cancel, or an owner seeing their own accept, gets
+        # a harmless redundant notification; that's a reasonable trade-off
+        # against the complexity of tracking "who changed it" separately.
+        user_ids = [uid for uid in (record.get("farmer_id"), record.get("owner_id")) if uid]
+        tokens = tokens_for_users(user_ids)
+        sent = send_push_to_tokens(tokens, "AgriRent AI", message)
+        return {"sent": sent, "status": new_status}
+
+    return {"skipped": f"unhandled event type '{payload.type}'"}

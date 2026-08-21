@@ -18,8 +18,10 @@ talking directly to Supabase). See `AGRIRENT_AI_MASTER.md` §0 STATUS for why.
   model is trained on clearly-labeled *synthetic* data (no real bookings
   exist yet) and cached to `app/ranking/model.joblib` on first request
   (not committed to git).
-- `POST /notifications/booking-webhook` — receiver for a Supabase Database
-  Webhook on `bookings` UPDATE, sends an FCM push via `app/notifications.py`.
+- `POST /notifications/booking-webhook` — receiver for a Postgres trigger
+  (pg_net) or a dashboard-created Supabase Database Webhook on `bookings`
+  INSERT (new request → notifies the owner) and UPDATE (status change →
+  notifies both parties), sends an FCM push via `app/notifications.py`.
   Safe to call even before Firebase is configured — it just no-ops (see
   "Setting up push notifications" below).
 
@@ -101,13 +103,33 @@ mechanism. This section is only for actual device push notifications.
    `SUPABASE_SERVICE_ROLE_KEY` (Supabase Dashboard → Project Settings → API
    → `service_role` **secret** key — never put this in frontend code) in
    Render's env vars.
-9. Wire the webhook: Supabase Dashboard → Database → Webhooks → Create a new
-   webhook → table `bookings`, events: `Update` only → URL
-   `https://<your-render-url>/notifications/booking-webhook` → HTTP Headers:
-   `X-Webhook-Secret: <same value as WEBHOOK_SECRET>`.
+9. Wire the webhook — the endpoint handles both `INSERT` (new booking
+   request → notifies the owner) and `UPDATE` (status change → notifies
+   both parties), so fire on both events. Two ways to do this, functionally
+   identical (Supabase's dashboard webhook is itself just a UI over
+   `pg_net` + a trigger):
+   - **Dashboard webhook:** Supabase Dashboard → Database → Webhooks →
+     Create a new webhook → table `bookings`, events: `Insert` **and**
+     `Update` → URL `https://<your-render-url>/notifications/booking-webhook`
+     → HTTP Headers: `X-Webhook-Secret: <same value as WEBHOOK_SECRET>`.
+   - **Manual `pg_net` trigger:** a Postgres function + trigger that calls
+     `net.http_post()` on `bookings` `INSERT OR UPDATE`, POSTing
+     `{type, table, record, old_record}` (an extra `schema` field is fine —
+     the backend ignores unknown fields) with the same `X-Webhook-Secret`
+     header. Only fire on `UPDATE` when `status` actually changed if you
+     want to avoid a wasted (harmless) call on every column touch — the
+     backend already no-ops on an unchanged status either way.
 10. Confirm Realtime is on for `bookings`: Supabase Dashboard → Database →
     Replication → toggle `bookings` on (the schema.sql migration already
     does this via SQL — either path is fine, running both is harmless).
+
+**Known platform limitation:** iOS Safari does not support the Web Push /
+Notification APIs FCM's web SDK relies on (as of the iOS versions in common
+use) — a phone on iOS Safari simply won't register a token, and
+`push_tokens` will have no row for it. This isn't a bug in this codebase;
+Android and desktop browsers work normally. If iOS support becomes a
+priority later, the fix is a native/PWA-installed app, not a code change
+here.
 
 Until steps 1–9 are done, `Turn on notifications` in Profile > Settings will
 say notifications aren't configured yet, and the webhook endpoint silently
