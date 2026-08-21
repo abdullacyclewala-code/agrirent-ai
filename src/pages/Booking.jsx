@@ -7,15 +7,27 @@ import { Button, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
 import { artCategoryFor, equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 import { subscribeToBooking } from "../lib/realtime.js";
+import { datesOverlap, expireStaleRequests, conflictOutOverlappingRequests } from "../lib/bookingLifecycle.js";
 
-// Matches the `status` enum used in supabase/schema.sql `bookings` table.
+// Matches the `status` values used in supabase/schema.sql `bookings` table.
 const STAGES = [
   { id: "Requested", label: "Requested", desc: "Sent to the owner, waiting for a response" },
   { id: "Confirmed", label: "Confirmed", desc: "Owner accepted — slot is locked in" },
   { id: "In Use", label: "In Use", desc: "Work is currently in progress" },
   { id: "Completed", label: "Completed", desc: "Job done" },
 ];
-const TERMINAL_NEGATIVE = ["Rejected", "Cancelled"];
+const TERMINAL_NEGATIVE = ["Rejected", "Cancelled", "Expired", "Conflicted"];
+// §4.5 edge cases — a farmer should understand WHY a booking ended up here,
+// since "Expired"/"Conflicted" aren't a decision either party made.
+const NEGATIVE_COPY = {
+  Rejected: "This booking was rejected by the owner.",
+  Cancelled: "This booking was cancelled.",
+  Expired: "This request expired because the owner didn't respond in time.",
+  Conflicted: "Someone else's request for this equipment was accepted first.",
+};
+// A farmer can search again straight from a dead-end booking instead of
+// having to find their way back manually.
+const SUGGEST_RETRY = ["Expired", "Conflicted", "Rejected"];
 
 export default function Booking() {
   const { id } = useParams();
@@ -37,9 +49,20 @@ export default function Booking() {
       .single();
     if (error || !data) {
       setNotFound(true);
-    } else {
-      setBooking(data);
+      setLoading(false);
+      return;
     }
+
+    // §4.5 "owner doesn't respond -> auto-expire" — checked lazily right
+    // here, the moment either party actually looks at this booking.
+    if (data.status === "Requested") {
+      const expiredIds = await expireStaleRequests([data]);
+      if (expiredIds.includes(data.id)) {
+        data.status = "Expired";
+      }
+    }
+
+    setBooking(data);
     setLoading(false);
   }, [id]);
 
@@ -67,12 +90,48 @@ export default function Booking() {
   const setStatus = async (status) => {
     setBusy(true);
     setActionError(null);
+
+    // §4.5 double-booking conflict: re-check right before locking in an
+    // Accept, not just at original booking-creation time — another request
+    // for these same dates could have been confirmed since this page loaded.
+    if (status === "Confirmed") {
+      const { data: conflicts, error: conflictErr } = await supabase
+        .from("bookings")
+        .select("id, start_date, end_date")
+        .eq("equipment_id", booking.equipment_id)
+        .in("status", ["Confirmed", "In Use"])
+        .neq("id", booking.id);
+      if (conflictErr) {
+        setActionError("Couldn't verify availability. Try again.");
+        setBusy(false);
+        return;
+      }
+      const hasConflict = (conflicts || []).some((b) =>
+        datesOverlap(b.start_date, b.end_date, booking.start_date, booking.end_date)
+      );
+      if (hasConflict) {
+        setActionError("These dates were already confirmed for another booking on this equipment.");
+        setBusy(false);
+        return;
+      }
+    }
+
     const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
-    setBusy(false);
     if (error) {
       setActionError(error.message || "Couldn't update the booking.");
+      setBusy(false);
       return;
     }
+
+    // §4.5: accepting one request auto-resolves any other still-pending
+    // requests that overlap the same equipment/dates — see
+    // conflictOutOverlappingRequests()'s docstring for why "Conflicted"
+    // rather than silently leaving them as "Requested".
+    if (status === "Confirmed") {
+      await conflictOutOverlappingRequests(booking);
+    }
+
+    setBusy(false);
     load();
   };
 
@@ -121,7 +180,12 @@ export default function Booking() {
           {isNegative ? (
             <Reveal>
               <div className="rounded-3xl border border-rust/30 bg-rust/10 p-6 text-center">
-                <p className="text-paper/80">This booking was {booking.status.toLowerCase()}.</p>
+                <p className="text-paper/80">{NEGATIVE_COPY[booking.status] || `This booking was ${booking.status.toLowerCase()}.`}</p>
+                {isFarmer && SUGGEST_RETRY.includes(booking.status) && (
+                  <Button variant="outline" className="mt-4 !px-5 !py-2 text-sm" onClick={() => navigate("/describe-job")}>
+                    Search for another match
+                  </Button>
+                )}
               </div>
             </Reveal>
           ) : (

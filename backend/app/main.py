@@ -1,26 +1,38 @@
 """
-AgriRent AI — Phase 4 backend (FastAPI)
+AgriRent AI — Phase 5 backend (FastAPI)
 
 Master doc §5.3 + §6.1 + §6.2 + §6.4 + §6.5. Phase 3 scoped this app to one
-endpoint (`/requirements/parse`, LLM free-text parsing). Phase 4 grows it
+endpoint (`/requirements/parse`, LLM free-text parsing). Phase 4 grew it
 with the two things §0 STATUS said would need the backend next:
 
 - `POST /equipment/rank` — §6.4/§6.5 LightGBM ranking. Takes a requirement +
   an ALREADY hard-filtered candidate list (rulesFilter.js, §6.3, still runs
   client-side against Supabase — unchanged) and returns real ML-ranked
   scores. See `app/ranking/` for the model itself.
-- `POST /notifications/booking-webhook` — receiver for a Supabase Database
-  Webhook on `bookings` UPDATE, sends FCM push via `app/notifications.py`.
-  This is the first place this backend reads anything (via the Supabase
-  REST API with a service-role key, never exposed to the frontend) — still
-  no direct Postgres connection/ORM, consistent with keeping this service
-  thin per the Phase 3 architecture note below.
+- `POST /notifications/booking-webhook` — receiver for a Postgres pg_net
+  trigger or a dashboard-created Supabase Database Webhook on `bookings`
+  INSERT (new request) and UPDATE (status change), sends FCM push via
+  `app/notifications.py`. This is the first place this backend reads
+  anything (via the Supabase REST API with a service-role key, never
+  exposed to the frontend) — still no direct Postgres connection/ORM,
+  consistent with keeping this service thin per the note below.
+
+Phase 5 (§4.5 polish + real-data retraining) doesn't add a new endpoint —
+the two remaining edge cases (stale-request auto-expiry, double-booking
+auto-conflict) are handled entirely client-side (see
+src/lib/bookingLifecycle.js) since they're just ordinary `bookings` UPDATEs
+that RLS already allows either party to make, and the existing webhook
+already notifies on any status change. What Phase 5 DOES add here is
+`app/ranking/retrain_from_bookings.py` — a manually-run script that retrains
+the ranker on real booking outcomes once enough exist, replacing
+`train_ranker.py`'s synthetic cold-start data. See that file's docstring.
 
 Why a backend exists at all (per master doc §0 STATUS note): secrets (LLM
 keys, then Firebase service-account credentials) can't safely live in
-frontend code. Equipment/booking CRUD and the rules-engine filter are still
-entirely frontend-to-Supabase (Phase 1/2, unchanged) — this service only
-does the things that genuinely need a server.
+frontend code. Equipment/booking CRUD, the rules-engine filter, and the
+Phase 5 lifecycle updates are still entirely frontend-to-Supabase (Phase
+1/2, unchanged) — this service only does the things that genuinely need a
+server.
 """
 
 from fastapi import FastAPI, HTTPException, Header
@@ -37,7 +49,7 @@ from .taxonomy import load_taxonomy
 from .ranking.ranker_service import rank_candidates as _rank_candidates
 from .notifications import send_push_to_tokens, message_for_status, new_request_message, tokens_for_users
 
-app = FastAPI(title="AgriRent AI Backend", version="0.4.0")
+app = FastAPI(title="AgriRent AI Backend", version="0.5.0")
 
 # CORS: allow the Vite dev server + the deployed Vercel frontend.
 # Set FRONTEND_ORIGIN in Render env vars to the real deployed URL.
@@ -53,7 +65,7 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "phase": 4}
+    return {"status": "ok", "phase": 5}
 
 
 class ParseRequirementIn(BaseModel):

@@ -10,6 +10,7 @@ import { artCategoryFor, equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 export default function Recommendations() {
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
+  const [requirementId, setRequirementId] = useState(null);
   const [results, setResults] = useState(null); // null = loading, [] = loaded empty
   const [relaxedHp, setRelaxedHp] = useState(false);
   const [rankedBy, setRankedBy] = useState("heuristic");
@@ -25,6 +26,7 @@ export default function Recommendations() {
     }
     const parsed = JSON.parse(raw);
     setJob(parsed.requirement);
+    setRequirementId(parsed.requirementId ?? null);
     setResults(parsed.results || []);
     setRelaxedHp(!!parsed.relaxedHp);
     setRankedBy(parsed.rankedBy || "heuristic");
@@ -122,7 +124,7 @@ export default function Recommendations() {
             {top && (
               <Reveal>
                 <Link
-                  to={`/equipment/${top.id}`}
+                  to={requirementId ? `/equipment/${top.id}?requirementId=${requirementId}` : `/equipment/${top.id}`}
                   className="group mb-6 grid grid-cols-1 gap-6 overflow-hidden rounded-3xl border border-wheat/30 bg-gradient-to-br from-forest-2 to-forest p-6 transition-shadow hover:shadow-[0_0_0_1px_rgba(232,179,74,0.4)] sm:grid-cols-[1.1fr_1.4fr] sm:p-2"
                 >
                   <div className="relative h-48 overflow-hidden rounded-2xl sm:h-full">
@@ -198,7 +200,7 @@ export default function Recommendations() {
                                 ))}
                               </div>
                               <div className="mt-3 flex items-center gap-3">
-                                <Link to={`/equipment/${eq.id}`}>
+                                <Link to={requirementId ? `/equipment/${eq.id}?requirementId=${requirementId}` : `/equipment/${eq.id}`}>
                                   <Button variant="outline" className="!px-4 !py-2 text-xs">View details</Button>
                                 </Link>
                                 <span className="text-xs text-paper/40">Owner: {eq.owner_name}</span>

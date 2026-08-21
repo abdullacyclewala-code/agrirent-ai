@@ -1,16 +1,24 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { MapPin, ChevronLeft } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Badge, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
 import { artCategoryFor, equipmentTypeLabel, operationLabel, cropLabel } from "../lib/equipmentDisplay.js";
+import { datesOverlap } from "../lib/bookingLifecycle.js";
 
 export default function EquipmentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  // Phase 5 — carried over from Recommendations.jsx so the booking this
+  // creates can be linked back to the requirement that produced it (see
+  // the insert below). Absent when someone lands here without going through
+  // the search flow (e.g. browsing equipment directly) — that's fine, the
+  // column is nullable for exactly that reason.
+  const [searchParams] = useSearchParams();
+  const requirementId = searchParams.get("requirementId");
 
   const [eq, setEq] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,7 +83,7 @@ export default function EquipmentDetails() {
       return;
     }
     const overlap = (conflicts || []).some(
-      (b) => b.start_date <= endDate && b.end_date >= startDate
+      (b) => datesOverlap(b.start_date, b.end_date, startDate, endDate)
     );
     if (overlap) {
       setBookError("Those dates are already booked. Pick different dates.");
@@ -93,6 +101,7 @@ export default function EquipmentDetails() {
         start_date: startDate,
         end_date: endDate,
         price: eq.price,
+        requirement_id: requirementId || null,
       })
       .select()
       .single();

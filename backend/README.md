@@ -1,4 +1,4 @@
-# AgriRent AI — Backend (Phase 4)
+# AgriRent AI — Backend (Phase 5)
 
 FastAPI service. First backend in the project (Phase 1–2 were frontend-only,
 talking directly to Supabase). See `AGRIRENT_AI_MASTER.md` §0 STATUS for why.
@@ -27,10 +27,20 @@ talking directly to Supabase). See `AGRIRENT_AI_MASTER.md` §0 STATUS for why.
 
 - `GET /health` — trivial liveness check.
 
-This is the only place this backend reads any data (`push_tokens`, via the
-Supabase REST API using the service-role key) — still no Postgres
-driver/ORM, no auth of its own. Everything else (equipment/booking CRUD, the
-rules filter, Realtime subscriptions) is still frontend-to-Supabase directly.
+**Phase 5:** no new endpoint — added `app/ranking/retrain_from_bookings.py`,
+a manually-run script (not an HTTP route) that retrains the ranker on real
+booking outcomes once enough exist. See "Retraining the ranker on real
+data" below. The two remaining §4.5 edge cases (stale-request expiry,
+double-booking auto-conflict) are handled entirely client-side
+(`src/lib/bookingLifecycle.js`) since they're just ordinary `bookings`
+UPDATEs — no backend involvement needed.
+
+This backend reads two things (`push_tokens` for notifications,
+`bookings`+`requirements` for retraining), both via the Supabase REST API
+using the service-role key — still no Postgres driver/ORM, no auth of its
+own. Everything else (equipment/booking CRUD, the rules filter, Realtime
+subscriptions, the Phase 5 lifecycle updates) is still frontend-to-Supabase
+directly.
 
 ## Local dev
 
@@ -151,14 +161,44 @@ on the first request after idling. The frontend's free-text input and ranking
 call both handle this with a loading state and a generous timeout — see
 `llmClient.js` and `rankClient.js`.
 
-## Retraining the ranker on real data (Phase 5, future)
+## Retraining the ranker on real data (Phase 5)
 
-`app/ranking/train_ranker.py` currently trains on synthetic, rule-based
-labels (§6.4 cold-start strategy) — clearly marked as such in its docstring.
-Once real bookings accumulate, replace `_synthetic_dataset()` with a query
-over completed vs. rejected/cancelled bookings, retrain on a periodic job
-(e.g. a Render Cron Job hitting a new admin-only retrain endpoint, or a
-GitHub Action), and bump `MODEL_VERSION` so `/equipment/rank` responses make
-the switch to real data visible. Don't mix synthetic and real labels in one
-training run.
+`app/ranking/train_ranker.py` trains on synthetic, rule-based labels (§6.4
+cold-start strategy) — clearly marked as such in its docstring. Once real
+bookings accumulate, `app/ranking/retrain_from_bookings.py` retrains on
+them instead. Run it manually:
+
+```bash
+cd backend
+python -m app.ranking.retrain_from_bookings
+```
+
+Needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` set (same ones used for
+push notifications above) so it can pull real bookings via Supabase's REST
+API. On Render, run this via the dashboard's Shell tab for the backend
+service (or `render exec`, if you're on a paid plan with SSH access) so it
+runs with the same env vars already configured there.
+
+**Why it might say "not enough real data yet" and do nothing:** LambdaMART
+learns relative preference *within a group of candidates for the same
+requirement* — a group only teaches it anything when at least two bookings
+tracing back to the same `requirement_id` had *different* outcomes (e.g. one
+Completed, one Rejected). The script requires at least 5 such groups and 30
+total usable rows before it'll touch the model; below that, it logs exactly
+how much data it found and leaves the existing (synthetic or previously
+real-trained) model untouched — a handful of test bookings shouldn't be
+allowed to quietly overfit the ranker. Note also that `requirement_id` was
+NULL on every booking created before this fix (Phase 5) — only bookings made
+through the search flow from here on carry it, so usable data accumulates
+starting now, not retroactively.
+
+There's no automatic schedule for this yet (Render's free tier has no
+built-in cron) — re-run the command above periodically as real usage grows,
+or wire it to a scheduled job later (a Render Cron Job on a paid plan, or a
+GitHub Actions workflow calling a new admin-only retrain endpoint) once
+there's enough real traffic to make scheduling worth it. Each successful
+real-data run bumps the model to `phase5-real-v1` (see
+`retrain_from_bookings.py`'s `REAL_MODEL_VERSION`) — check
+`/equipment/rank` responses' `model_version` field to confirm which one is
+currently serving.
 

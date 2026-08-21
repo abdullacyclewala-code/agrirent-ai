@@ -38,6 +38,12 @@ _STATUS_MESSAGES = {
     "In Use": "Your rental is now marked in use.",
     "Completed": "Your rental is complete. Hope it went well!",
     "Cancelled": "This booking was cancelled.",
+    # Phase 5 §4.5 edge cases — both auto-triggered by the frontend (see
+    # src/lib/bookingLifecycle.js), not a manual owner/farmer action, but
+    # they're still a normal bookings UPDATE, so they flow through this same
+    # webhook with no separate notification path needed.
+    "Expired": "Your booking request expired because the owner didn't respond in time. Try searching again.",
+    "Conflicted": "Someone else's request for this equipment was accepted first. Try searching again.",
 }
 
 

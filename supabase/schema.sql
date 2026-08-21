@@ -144,7 +144,7 @@ create table if not exists public.bookings (
   equipment_id bigint not null references public.equipment(id),
   farmer_id uuid not null references public.users(id),
   owner_id uuid not null references public.users(id),
-  status text not null default 'Requested', -- Requested, Confirmed, In Use, Completed, Rejected, Cancelled
+  status text not null default 'Requested', -- Requested, Confirmed, In Use, Completed, Rejected, Cancelled, Expired, Conflicted (see §4.5 in AGRIRENT_AI_MASTER.md — the last two are auto-set by src/lib/bookingLifecycle.js, not a manual action)
   start_date date,
   end_date date,
   price numeric,

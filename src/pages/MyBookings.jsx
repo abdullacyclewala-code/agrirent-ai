@@ -7,6 +7,7 @@ import { Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
 import { artCategoryFor } from "../lib/equipmentDisplay.js";
 import { subscribeToUserBookings } from "../lib/realtime.js";
+import { expireStaleRequests } from "../lib/bookingLifecycle.js";
 
 const STATUS_TONE = {
   Requested: "bg-sky/15 text-sky",
@@ -15,6 +16,8 @@ const STATUS_TONE = {
   Completed: "bg-white/10 text-paper/60",
   Rejected: "bg-rust/15 text-rust",
   Cancelled: "bg-rust/15 text-rust",
+  Expired: "bg-rust/15 text-rust",
+  Conflicted: "bg-rust/15 text-rust",
 };
 
 export default function MyBookings() {
@@ -29,7 +32,20 @@ export default function MyBookings() {
         .select("*, equipment:equipment_id ( name, equipment_type, location_label ), owner:owner_id ( name ), farmer:farmer_id ( name )")
         .or(`farmer_id.eq.${user.id},owner_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
-      setBookings(error ? [] : data || []);
+      if (error) {
+        setBookings([]);
+        return;
+      }
+      const rows = data || [];
+
+      // §4.5 "owner doesn't respond -> auto-expire" — checked lazily
+      // whenever this list is opened, same as Booking.jsx's single-booking
+      // load. Patch the ids that got expired into local state so the list
+      // reflects it immediately without a full refetch.
+      const expiredIds = await expireStaleRequests(rows);
+      setBookings(
+        expiredIds.length ? rows.map((b) => (expiredIds.includes(b.id) ? { ...b, status: "Expired" } : b)) : rows
+      );
     })();
   }, [user]);
 
