@@ -139,12 +139,12 @@ export default function Booking() {
   };
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">{t("common.loading")}</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-mut">{t("common.loading")}</div>;
   }
   if (notFound || !booking) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-paper/60">{t("booking.notFound")}</p>
+        <p className="text-mut">{t("booking.notFound")}</p>
         <Button variant="outline" onClick={() => navigate("/")}>{t("common.goHome")}</Button>
       </div>
     );
@@ -152,7 +152,7 @@ export default function Booking() {
   if (!isOwner && !isFarmer) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-paper/60">{t("booking.noAccess")}</p>
+        <p className="text-mut">{t("booking.noAccess")}</p>
         <Button variant="outline" onClick={() => navigate("/")}>{t("common.goHome")}</Button>
       </div>
     );
@@ -165,13 +165,13 @@ export default function Booking() {
   return (
     <main className="mx-auto max-w-5xl px-5 pb-16 pt-6 md:px-8 md:pt-10">
       <div className="mb-8">
-        <span className="font-mono text-[11px] uppercase tracking-widest text-sky">{t("booking.bookingNumber", { id: booking.id })}</span>
+        <span className="font-mono text-[11px] uppercase tracking-widest text-sage">{t("booking.bookingNumber", { id: booking.id })}</span>
         <div className="mt-1 flex flex-wrap items-center gap-3">
-          <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">
+          <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
             {isNegative ? t("booking.statusTitle", { status: booking.status.toLowerCase() }) : t("booking.trackingTitle")}
           </h1>
           {liveUpdate && (
-            <span className="flex items-center gap-1 rounded-full bg-leaf/15 px-2.5 py-1 text-[11px] font-medium text-leaf">
+            <span className="flex items-center gap-1 rounded-full bg-sage-soft px-2.5 py-1 text-[11px] font-medium text-sage">
               <Radio size={11} /> {t("booking.updatedJustNow")}
             </span>
           )}
@@ -182,8 +182,8 @@ export default function Booking() {
         <div>
           {isNegative ? (
             <Reveal>
-              <div className="rounded-3xl border border-rust/30 bg-rust/10 p-6 text-center">
-                <p className="text-paper/80">{NEGATIVE_COPY[booking.status] || t("booking.negGeneric", { status: booking.status.toLowerCase() })}</p>
+              <div className="rounded-3xl border border-accent/30 bg-accent-soft p-6 text-center">
+                <p className="text-ink-2">{NEGATIVE_COPY[booking.status] || t("booking.negGeneric", { status: booking.status.toLowerCase() })}</p>
                 {isFarmer && SUGGEST_RETRY.includes(booking.status) && (
                   <Button variant="outline" className="mt-4 !px-5 !py-2 text-sm" onClick={() => navigate("/describe-job")}>
                     {t("booking.searchAgain")}
@@ -193,27 +193,27 @@ export default function Booking() {
             </Reveal>
           ) : (
             <Reveal>
-              <div className="relative rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+              <div className="relative rounded-2xl border border-line bg-card p-6">
                 {STAGES.map((stage, i) => {
                   const done = i < currentIndex;
                   const active = i === currentIndex;
                   return (
                     <div key={stage.id} className="relative flex gap-4 pb-8 last:pb-0">
                       {i < STAGES.length - 1 && (
-                        <span className={`absolute left-[11px] top-6 h-full w-px ${done ? "bg-wheat" : "bg-white/10"}`} />
+                        <span className={`absolute left-[11px] top-6 h-full w-px ${done ? "bg-accent" : "bg-line-2"}`} />
                       )}
                       <span
                         className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                          done || active ? "bg-wheat text-ink" : "border border-white/20 bg-ink text-paper/30"
-                        } ${active ? "ring-4 ring-wheat/20" : ""}`}
+                          done || active ? "bg-accent text-white" : "border border-line bg-card text-mut2"
+                        } ${active ? "ring-4 ring-accent/20" : ""}`}
                       >
                         {done ? "✓" : i + 1}
                       </span>
                       <div>
-                        <div className={`text-sm font-semibold ${done || active ? "text-paper" : "text-paper/40"}`}>
+                        <div className={`text-sm font-semibold ${done || active ? "text-ink" : "text-mut2"}`}>
                           {stage.label}
                         </div>
-                        <div className="text-xs text-paper/40">{stage.desc}</div>
+                        <div className="text-xs text-mut2">{stage.desc}</div>
                       </div>
                     </div>
                   );
@@ -222,7 +222,7 @@ export default function Booking() {
             </Reveal>
           )}
 
-          {actionError && <p className="mt-4 text-sm text-red-400">{actionError}</p>}
+          {actionError && <p className="mt-4 text-sm text-accent">{actionError}</p>}
 
           {/* Owner actions */}
           {isOwner && !isNegative && (
@@ -248,7 +248,7 @@ export default function Booking() {
               <button
                 disabled={busy}
                 onClick={() => setStatus("Cancelled")}
-                className="text-sm text-rust hover:underline disabled:opacity-40"
+                className="text-sm text-accent hover:underline disabled:opacity-40"
               >
                 {t("booking.cancelBooking")}
               </button>
@@ -258,32 +258,32 @@ export default function Booking() {
 
         {/* details card */}
         <div>
-          <Reveal className="rounded-3xl border border-white/10 bg-white/[0.03] p-6">
+          <Reveal className="rounded-3xl border border-line bg-card p-6">
             <div className="flex items-center gap-3">
               <div className="h-16 w-16 overflow-hidden rounded-xl">
                 <EquipmentArt category={artCategoryFor(eq?.equipment_type)} className="h-full w-full" />
               </div>
               <div>
-                <div className="font-display text-base font-semibold text-paper">{eq?.name}</div>
-                <div className="text-xs text-paper/50">{equipmentTypeLabel(eq?.equipment_type)}</div>
+                <div className="font-display text-base font-semibold text-ink">{eq?.name}</div>
+                <div className="text-xs text-mut">{equipmentTypeLabel(eq?.equipment_type)}</div>
                 {eq?.location_label && (
-                  <div className="flex items-center gap-1 text-xs text-paper/50"><MapPin size={12} /> {eq.location_label}</div>
+                  <div className="flex items-center gap-1 text-xs text-mut"><MapPin size={12} /> {eq.location_label}</div>
                 )}
               </div>
             </div>
 
-            <div className="mt-5 flex items-center gap-2 border-y border-white/10 py-4 text-sm text-paper/60">
+            <div className="mt-5 flex items-center gap-2 border-y border-line py-4 text-sm text-mut">
               <Calendar size={14} /> {booking.start_date} → {booking.end_date}
             </div>
 
             <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between text-paper/60">
+              <div className="flex justify-between text-mut">
                 <span>{isOwner ? t("booking.farmerLabel") : t("booking.ownerLabel")}</span>
-                <span className="text-paper">{isOwner ? booking.farmer?.name : booking.owner?.name}</span>
+                <span className="text-ink">{isOwner ? booking.farmer?.name : booking.owner?.name}</span>
               </div>
-              <div className="flex justify-between border-t border-white/10 pt-2 font-semibold text-paper">
+              <div className="flex justify-between border-t border-line pt-2 font-semibold text-ink">
                 <span>{t("booking.priceLabel")}</span>
-                <span className="font-mono text-wheat">₹{booking.price}<span className="text-xs text-paper/40">/{eq?.price_unit}</span></span>
+                <span className="font-mono text-accent">₹{booking.price}<span className="text-xs text-mut2">/{eq?.price_unit}</span></span>
               </div>
             </div>
           </Reveal>

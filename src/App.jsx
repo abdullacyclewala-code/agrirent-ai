@@ -34,7 +34,7 @@ function RouteProgress({ path }) {
   return (
     <motion.div
       key={path}
-      className="fixed left-0 top-0 z-[999] h-[3px] bg-gradient-to-r from-wheat via-sky to-wheat"
+      className="fixed left-0 top-0 z-[999] h-[3px] bg-gradient-to-r from-accent via-gold to-accent"
       initial={{ width: "0%", opacity: 1 }}
       animate={{ width: "100%", opacity: [1, 1, 0] }}
       transition={{ duration: 0.7, ease: "easeInOut" }}
@@ -76,14 +76,14 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-ink text-white/60 text-sm">
+      <div className="min-h-screen flex items-center justify-center bg-paper text-mut text-sm">
         {t("common.loading")}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-ink">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-paper">
       <RouteProgress path={location.pathname} />
       {isAuthenticated && <NavBar />}
       <AnimatePresence mode="wait">
@@ -108,12 +108,12 @@ export default function App() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed left-1/2 top-4 z-[1000] flex max-w-sm -translate-x-1/2 items-start gap-3 rounded-2xl border border-wheat/30 bg-forest-2 px-4 py-3 shadow-lg"
+            className="fixed left-1/2 top-4 z-[1000] flex max-w-sm -translate-x-1/2 items-start gap-3 rounded-2xl border border-line bg-card px-4 py-3 shadow-lg"
           >
-            <Bell size={16} className="mt-0.5 shrink-0 text-wheat" />
+            <Bell size={16} className="mt-0.5 shrink-0 text-accent" />
             <div>
-              <div className="text-sm font-semibold text-paper">{pushToast.title}</div>
-              {pushToast.body && <div className="mt-0.5 text-xs text-paper/60">{pushToast.body}</div>}
+              <div className="text-sm font-semibold text-ink">{pushToast.title}</div>
+              {pushToast.body && <div className="mt-0.5 text-xs text-mut">{pushToast.body}</div>}
             </div>
           </motion.div>
         )}

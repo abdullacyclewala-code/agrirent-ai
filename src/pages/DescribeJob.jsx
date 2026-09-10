@@ -29,8 +29,8 @@ function StepShell({ title, sub, children }) {
       exit={{ opacity: 0, x: -40 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      <h2 className="font-display text-2xl font-semibold text-paper sm:text-3xl">{title}</h2>
-      {sub && <p className="mt-2 text-sm text-paper/55">{sub}</p>}
+      <h2 className="font-display text-2xl font-semibold text-ink sm:text-3xl">{title}</h2>
+      {sub && <p className="mt-2 text-sm text-mut">{sub}</p>}
       <div className="mt-8">{children}</div>
     </motion.div>
   );
@@ -117,7 +117,7 @@ export default function DescribeJob() {
 
   const submit = async () => {
     setSubmitError(null);
-    localStorage.setItem("kisan_job", JSON.stringify(form));
+    localStorage.setItem("agrirent_job", JSON.stringify(form));
     setScanning(true);
 
     const cropLabel = crops.find((c) => c.id === form.crop)?.label || form.crop;
@@ -202,7 +202,7 @@ export default function DescribeJob() {
       finalResults.sort((a, b) => b.matchScore - a.matchScore);
 
       sessionStorage.setItem(
-        "kisan_matches",
+        "agrirent_matches",
         JSON.stringify({
           requirementId,
           requirement: { ...form, parsed_json },
@@ -226,9 +226,9 @@ export default function DescribeJob() {
       {/* progress */}
       <div className="mb-10 flex items-center gap-2">
         {STEP_KEYS.map((k, i) => (
-          <div key={k} className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">
+          <div key={k} className="h-1 flex-1 overflow-hidden rounded-full bg-line-2">
             <motion.div
-              className="h-full bg-wheat"
+              className="h-full bg-accent"
               initial={false}
               animate={{ width: i <= step ? "100%" : "0%" }}
               transition={{ duration: 0.4 }}
@@ -238,7 +238,7 @@ export default function DescribeJob() {
       </div>
 
       {submitError && (
-        <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="mb-6 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent">
           {submitError}
         </div>
       )}
@@ -251,14 +251,14 @@ export default function DescribeJob() {
             sub={t("describeJob.freetextSub")}
           >
             <div className="relative">
-              <Sparkles className="pointer-events-none absolute left-4 top-4 text-wheat/60" size={18} />
+              <Sparkles className="pointer-events-none absolute left-4 top-4 text-accent" size={18} />
               <textarea
                 value={freeText}
                 onChange={(e) => setFreeText(e.target.value)}
                 placeholder={t("describeJob.freetextPlaceholder")}
                 rows={4}
                 disabled={parsing}
-                className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-paper placeholder:text-paper/30 focus:border-wheat disabled:opacity-50"
+                className="w-full resize-none rounded-xl border border-line bg-card py-4 pl-11 pr-4 text-ink placeholder:text-mut2 focus:border-accent disabled:opacity-50"
               />
             </div>
 
@@ -266,8 +266,8 @@ export default function DescribeJob() {
               <div
                 className={`mt-4 rounded-xl border px-4 py-3 text-sm ${
                   parseNotice.ok
-                    ? "border-moss-light/30 bg-moss-light/10 text-moss-light"
-                    : "border-white/10 bg-white/[0.03] text-paper/60"
+                    ? "border-sage/30 bg-sage-soft text-sage"
+                    : "border-line bg-card text-mut"
                 }`}
               >
                 {parseNotice.message}
@@ -289,7 +289,7 @@ export default function DescribeJob() {
               <button
                 onClick={() => setStep(1)}
                 disabled={parsing}
-                className="flex items-center gap-1.5 text-sm font-medium text-paper/50 hover:text-paper disabled:opacity-40"
+                className="flex items-center gap-1.5 text-sm font-medium text-mut hover:text-ink disabled:opacity-40"
               >
                 <PenLine size={14} /> {t("describeJob.skipManual")}
               </button>
@@ -306,12 +306,12 @@ export default function DescribeJob() {
                   onClick={() => set("crop", c.id)}
                   className={`flex flex-col items-center gap-2 rounded-2xl border p-5 transition-all ${
                     form.crop === c.id
-                      ? "border-wheat bg-wheat/10 shadow-[0_0_0_4px_rgba(232,179,74,0.12)]"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/25"
+                      ? "border-accent bg-accent-soft shadow-[0_0_0_4px_rgba(168,67,31,0.12)]"
+                      : "border-line bg-card hover:border-mut2"
                   }`}
                 >
                   <span className="text-3xl">{c.icon}</span>
-                  <span className="text-sm font-medium text-paper">{c.label}</span>
+                  <span className="text-sm font-medium text-ink">{c.label}</span>
                 </button>
               ))}
             </div>
@@ -327,16 +327,16 @@ export default function DescribeJob() {
                   onClick={() => set("operation", op.id)}
                   className={`flex items-center justify-between rounded-2xl border p-5 text-left transition-all ${
                     form.operation === op.id
-                      ? "border-wheat bg-wheat/10"
-                      : "border-white/10 bg-white/[0.03] hover:border-white/25"
+                      ? "border-accent bg-accent-soft"
+                      : "border-line bg-card hover:border-mut2"
                   }`}
                 >
                   <div>
-                    <div className="font-medium text-paper">{op.label}</div>
-                    <div className="mt-0.5 text-xs text-paper/50">{op.desc}</div>
+                    <div className="font-medium text-ink">{op.label}</div>
+                    <div className="mt-0.5 text-xs text-mut">{op.desc}</div>
                   </div>
                   {form.operation === op.id && (
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-wheat text-ink">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-white">
                       <Check size={14} />
                     </span>
                   )}
@@ -348,10 +348,10 @@ export default function DescribeJob() {
 
         {STEP_KEYS[step] === "land" && (
           <StepShell key="land" title={t("describeJob.landTitle")} sub={t("describeJob.landSub")}>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center">
-              <div className="font-display text-6xl font-bold text-wheat">
+            <div className="rounded-2xl border border-line bg-card p-8 text-center">
+              <div className="font-display text-6xl font-bold text-accent">
                 {form.land}
-                <span className="ml-2 text-2xl text-paper/50">{t("describeJob.acres")}</span>
+                <span className="ml-2 text-2xl text-mut">{t("describeJob.acres")}</span>
               </div>
               <input
                 type="range"
@@ -360,9 +360,9 @@ export default function DescribeJob() {
                 step="0.5"
                 value={form.land}
                 onChange={(e) => set("land", parseFloat(e.target.value))}
-                className="mt-8 w-full accent-[#e8b34a]"
+                className="mt-8 w-full accent-[#a8431f]"
               />
-              <div className="mt-2 flex justify-between font-mono text-xs text-paper/40">
+              <div className="mt-2 flex justify-between font-mono text-xs text-mut2">
                 <span>0.5</span>
                 <span>30 {t("describeJob.acres")}</span>
               </div>
@@ -373,17 +373,17 @@ export default function DescribeJob() {
         {STEP_KEYS[step] === "location" && (
           <StepShell key="location" title={t("describeJob.locationTitle")} sub={t("describeJob.locationSub")}>
             <div className="relative">
-              <MapPin className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-paper/40" size={18} />
+              <MapPin className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-mut2" size={18} />
               <input
                 value={form.location}
                 onChange={(e) => set("location", e.target.value)}
                 placeholder={t("describeJob.locationPlaceholder")}
-                className="w-full rounded-xl border border-white/10 bg-white/[0.03] py-4 pl-11 pr-4 text-paper placeholder:text-paper/30 focus:border-wheat"
+                className="w-full rounded-xl border border-line bg-card py-4 pl-11 pr-4 text-ink placeholder:text-mut2 focus:border-accent"
               />
             </div>
             <button
               onClick={() => set("location", "Village Rurka, Ludhiana (current location)")}
-              className="mt-3 flex items-center gap-2 text-sm font-medium text-sky hover:text-sky-dim"
+              className="mt-3 flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-2"
             >
               <LocateFixed size={15} /> {t("describeJob.useCurrentLocation")}
             </button>
@@ -403,14 +403,14 @@ export default function DescribeJob() {
               type="date"
               value={form.date}
               onChange={(e) => set("date", e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-4 text-paper focus:border-wheat [color-scheme:dark]"
+              className="w-full rounded-xl border border-line bg-card px-4 py-4 text-ink focus:border-accent [color-scheme:light]"
             />
             <textarea
               value={form.notes}
               onChange={(e) => set("notes", e.target.value)}
               placeholder={t("describeJob.notesPlaceholder")}
               rows={3}
-              className="mt-6 w-full resize-none rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-paper placeholder:text-paper/30 focus:border-wheat"
+              className="mt-6 w-full resize-none rounded-xl border border-line bg-card px-4 py-3 text-sm text-ink placeholder:text-mut2 focus:border-accent"
             />
           </StepShell>
         )}
@@ -418,11 +418,11 @@ export default function DescribeJob() {
         {STEP_KEYS[step] === "review" && (
           <StepShell key="review" title={t("describeJob.reviewTitle")} sub={t("describeJob.reviewSub")}>
             {form.llmProviderUsed && (
-              <div className="mb-4 flex items-center gap-2 rounded-xl border border-wheat/20 bg-wheat/5 px-4 py-2.5 text-xs text-wheat">
+              <div className="mb-4 flex items-center gap-2 rounded-xl border border-accent/20 bg-accent-soft px-4 py-2.5 text-xs text-accent">
                 <Sparkles size={13} /> {t("describeJob.prefilledNotice", { provider: form.llmProviderUsed })}
               </div>
             )}
-            <div className="divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.03]">
+            <div className="divide-y divide-line rounded-2xl border border-line bg-card">
               {[
                 [t("describeJob.reviewCrop"), crops.find((c) => c.id === form.crop)?.label],
                 [t("describeJob.reviewOperation"), operations.find((o) => o.id === form.operation)?.label],
@@ -432,8 +432,8 @@ export default function DescribeJob() {
                 [t("describeJob.reviewNotes"), form.notes || t("describeJob.reviewNone")],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between px-5 py-4 text-sm">
-                  <span className="text-paper/50">{label}</span>
-                  <span className="font-medium text-paper">{value}</span>
+                  <span className="text-mut">{label}</span>
+                  <span className="font-medium text-ink">{value}</span>
                 </div>
               ))}
             </div>
@@ -442,7 +442,7 @@ export default function DescribeJob() {
       </AnimatePresence>
 
       <div className="mt-10 flex items-center justify-between">
-        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-paper/60 hover:text-paper">
+        <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-mut hover:text-ink">
           <ArrowLeft size={16} /> {t("common.back")}
         </button>
         <Button variant="primary" onClick={goNext} disabled={!canNext}>
@@ -476,26 +476,26 @@ function ScanningScreen({ form }) {
     <main className="flex min-h-[calc(100vh-72px)] flex-col items-center justify-center px-6 text-center">
       <div className="relative flex h-40 w-40 items-center justify-center">
         <motion.div
-          className="absolute inset-0 rounded-full border-2 border-wheat/30"
+          className="absolute inset-0 rounded-full border-2 border-accent/30"
           animate={{ scale: [1, 1.4], opacity: [0.6, 0] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut" }}
         />
         <motion.div
-          className="absolute inset-0 rounded-full border-2 border-sky/30"
+          className="absolute inset-0 rounded-full border-2 border-sage/30"
           animate={{ scale: [1, 1.7], opacity: [0.5, 0] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: "easeOut", delay: 0.5 }}
         />
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
-          className="flex h-20 w-20 items-center justify-center rounded-full bg-wheat/15 text-wheat"
+          className="flex h-20 w-20 items-center justify-center rounded-full bg-accent-soft text-accent"
         >
           <Radar size={32} />
         </motion.div>
       </div>
-      <h2 className="mt-8 font-display text-xl font-semibold text-paper">{t("describeJob.scanningTitle")}</h2>
-      <p className="mt-2 font-mono text-sm text-moss-light">{messages[msgIndex]}</p>
-      <p className="mt-6 max-w-xs text-xs text-paper/40">
+      <h2 className="mt-8 font-display text-xl font-semibold text-ink">{t("describeJob.scanningTitle")}</h2>
+      <p className="mt-2 font-mono text-sm text-sage">{messages[msgIndex]}</p>
+      <p className="mt-6 max-w-xs text-xs text-mut2">
         {form.land} {t("describeJob.acres")} · {form.location || t("describeJob.yourArea")}
       </p>
     </main>

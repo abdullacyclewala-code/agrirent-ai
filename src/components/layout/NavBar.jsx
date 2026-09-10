@@ -17,13 +17,13 @@ export default function NavBar() {
   return (
     <>
       {/* Desktop top nav */}
-      <header className="sticky top-0 z-40 hidden border-b border-white/5 bg-ink/80 backdrop-blur-xl md:block">
+      <header className="sticky top-0 z-40 hidden border-b border-line bg-paper/80 backdrop-blur-xl md:block">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-8 py-4">
           <NavLink to="/" className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-wheat text-ink">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-white">
               <Sprout size={18} strokeWidth={2.5} />
             </span>
-            <span className="font-display text-lg font-bold tracking-tight text-paper">{t("nav.brand")}</span>
+            <span className="font-display text-lg font-bold tracking-tight text-ink">{t("nav.brand")}</span>
           </NavLink>
           <nav className="flex items-center gap-1">
             {navItems.map((item) => (
@@ -33,7 +33,7 @@ export default function NavBar() {
                 end={item.end}
                 className={({ isActive }) =>
                   `rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                    isActive ? "bg-white/10 text-wheat" : "text-paper/60 hover:text-paper"
+                    isActive ? "bg-accent-soft text-accent" : "text-mut hover:text-ink"
                   }`
                 }
               >
@@ -49,12 +49,12 @@ export default function NavBar() {
       </header>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-white/5 bg-ink/90 px-5 py-4 backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-paper/90 px-5 py-4 backdrop-blur-xl md:hidden">
         <NavLink to="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-wheat text-ink">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
             <Sprout size={16} strokeWidth={2.5} />
           </span>
-          <span className="font-display text-base font-bold text-paper">{t("nav.brand")}</span>
+          <span className="font-display text-base font-bold text-ink">{t("nav.brand")}</span>
         </NavLink>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
@@ -63,7 +63,7 @@ export default function NavBar() {
       </header>
 
       {/* Mobile bottom nav */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-white/10 bg-ink/95 px-2 py-2 backdrop-blur-xl md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-line bg-card/95 px-2 py-2 backdrop-blur-xl md:hidden">
         {navItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -73,7 +73,7 @@ export default function NavBar() {
               end={item.end}
               className={({ isActive }) =>
                 `flex flex-col items-center gap-1 rounded-xl px-3 py-1.5 text-[10px] font-medium transition-colors ${
-                  isActive ? "text-wheat" : "text-paper/50"
+                  isActive ? "text-accent" : "text-mut2"
                 }`
               }
             >

@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-ink text-white/60 text-sm">
+      <div className="min-h-screen flex items-center justify-center bg-paper text-mut text-sm">
         {t("common.loading")}
       </div>
     );

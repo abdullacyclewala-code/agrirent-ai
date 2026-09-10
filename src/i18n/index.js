@@ -31,7 +31,7 @@ i18n
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
-      lookupLocalStorage: "kisan_lang",
+      lookupLocalStorage: "agrirent_lang",
     },
   });
 

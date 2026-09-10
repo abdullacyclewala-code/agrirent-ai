@@ -117,12 +117,12 @@ export default function EquipmentDetails() {
   };
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">{t("common.loading")}</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-mut">{t("common.loading")}</div>;
   }
   if (notFound || !eq) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
-        <p className="text-paper/60">{t("equipmentDetails.notFound")}</p>
+        <p className="text-mut">{t("equipmentDetails.notFound")}</p>
         <Button variant="outline" onClick={() => navigate("/recommendations")}>{t("equipmentDetails.backToMatches")}</Button>
       </div>
     );
@@ -130,14 +130,14 @@ export default function EquipmentDetails() {
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-28 pt-6 md:px-8 md:pb-16 md:pt-10">
-      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-paper/50 hover:text-paper">
+      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-mut hover:text-ink">
         <ChevronLeft size={16} /> {t("common.back")}
       </button>
 
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[1.3fr_1fr]">
         {/* gallery */}
         <div className="min-w-0">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-white/10">
+          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line">
             <EquipmentArt category={artCategoryFor(eq.equipment_type)} className="h-full w-full" />
             <div className="absolute left-4 top-4 flex gap-2">
               <Badge tone={eq.is_available ? "leaf" : "rust"}>{eq.is_available ? t("equipmentDetails.available") : t("equipmentDetails.paused")}</Badge>
@@ -145,47 +145,47 @@ export default function EquipmentDetails() {
           </div>
 
           <Reveal className="mt-10">
-            <h2 className="font-display text-lg font-semibold text-paper">{t("equipmentDetails.specifications")}</h2>
-            <div className="mt-4 divide-y divide-white/10 rounded-2xl border border-white/10 bg-white/[0.02] font-mono text-sm">
+            <h2 className="font-display text-lg font-semibold text-ink">{t("equipmentDetails.specifications")}</h2>
+            <div className="mt-4 divide-y divide-line rounded-2xl border border-line bg-card font-mono text-sm">
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">{t("equipmentDetails.type")}</span>
-                <span className="text-paper">{equipmentTypeLabel(eq.equipment_type)}</span>
+                <span className="text-mut">{t("equipmentDetails.type")}</span>
+                <span className="text-ink">{equipmentTypeLabel(eq.equipment_type)}</span>
               </div>
               {eq.hp != null && (
                 <div className="flex justify-between px-5 py-3">
-                  <span className="text-paper/45">{t("equipmentDetails.horsepower")}</span>
-                  <span className="text-paper">{eq.hp} HP</span>
+                  <span className="text-mut">{t("equipmentDetails.horsepower")}</span>
+                  <span className="text-ink">{eq.hp} HP</span>
                 </div>
               )}
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">{t("equipmentDetails.operations")}</span>
-                <span className="text-paper text-right">
+                <span className="text-mut">{t("equipmentDetails.operations")}</span>
+                <span className="text-ink text-right">
                   {(eq.compatible_operations || []).map(operationLabel).join(", ") || "—"}
                 </span>
               </div>
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">{t("equipmentDetails.crops")}</span>
-                <span className="text-paper text-right">
+                <span className="text-mut">{t("equipmentDetails.crops")}</span>
+                <span className="text-ink text-right">
                   {(eq.compatible_crops || []).map(cropLabel).join(", ") || t("equipmentDetails.anyCrop")}
                 </span>
               </div>
               <div className="flex justify-between px-5 py-3">
-                <span className="text-paper/45">{t("equipmentDetails.serviceRadius")}</span>
-                <span className="text-paper">{eq.service_area_radius_km} km</span>
+                <span className="text-mut">{t("equipmentDetails.serviceRadius")}</span>
+                <span className="text-ink">{eq.service_area_radius_km} km</span>
               </div>
             </div>
           </Reveal>
 
           <Reveal delay={0.1} className="mt-10">
-            <h2 className="font-display text-lg font-semibold text-paper">{t("equipmentDetails.ownerLabel")}</h2>
-            <div className="mt-4 flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-wheat/20 font-display text-lg font-bold text-wheat">
+            <h2 className="font-display text-lg font-semibold text-ink">{t("equipmentDetails.ownerLabel")}</h2>
+            <div className="mt-4 flex items-center gap-4 rounded-2xl border border-line bg-card p-5">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-soft font-display text-lg font-bold text-accent">
                 {(eq.users?.name || "O").charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
-                <div className="font-medium text-paper">{eq.users?.name || t("common.owner")}</div>
+                <div className="font-medium text-ink">{eq.users?.name || t("common.owner")}</div>
                 {eq.location_label && (
-                  <div className="flex items-center gap-1 text-xs text-paper/50"><MapPin size={12} /> {eq.location_label}</div>
+                  <div className="flex items-center gap-1 text-xs text-mut"><MapPin size={12} /> {eq.location_label}</div>
                 )}
               </div>
             </div>
@@ -194,59 +194,59 @@ export default function EquipmentDetails() {
 
         {/* booking panel */}
         <div>
-          <div className="sticky top-24 rounded-3xl border border-white/10 bg-white/[0.03] p-6">
-            <span className="font-mono text-[11px] uppercase tracking-wide text-moss-light">
+          <div className="sticky top-24 rounded-3xl border border-line bg-card p-6">
+            <span className="font-mono text-[11px] uppercase tracking-wide text-sage">
               {equipmentTypeLabel(eq.equipment_type)}{eq.hp ? ` · ${eq.hp} HP` : ""}
             </span>
-            <h1 className="mt-1 font-display text-2xl font-bold text-paper">{eq.name}</h1>
+            <h1 className="mt-1 font-display text-2xl font-bold text-ink">{eq.name}</h1>
             {eq.location_label && (
-              <p className="mt-2 flex items-center gap-1.5 text-sm text-paper/55">
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-mut">
                 <MapPin size={14} /> {eq.location_label}
               </p>
             )}
 
-            <div className="mt-5 flex items-baseline gap-1 border-y border-white/10 py-5">
-              <span className="font-display text-3xl font-bold text-wheat">₹{eq.price}</span>
-              <span className="text-paper/50">/ {eq.price_unit}</span>
+            <div className="mt-5 flex items-baseline gap-1 border-y border-line py-5">
+              <span className="font-display text-3xl font-bold text-accent">₹{eq.price}</span>
+              <span className="text-mut">/ {eq.price_unit}</span>
             </div>
 
             {isOwnListing ? (
-              <p className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-center text-sm text-paper/50">
+              <p className="mt-6 rounded-xl border border-line bg-card px-4 py-3 text-center text-sm text-mut">
                 {t("equipmentDetails.ownListing")}
               </p>
             ) : !eq.is_available ? (
-              <p className="mt-6 rounded-xl border border-rust/30 bg-rust/10 px-4 py-3 text-center text-sm text-rust">
+              <p className="mt-6 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-center text-sm text-accent">
                 {t("equipmentDetails.pausedByOwner")}
               </p>
             ) : (
               <>
                 <div className="mt-5 space-y-3">
                   <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">{t("equipmentDetails.startDate")}</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-mut2">{t("equipmentDetails.startDate")}</label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper focus:border-wheat [color-scheme:dark]"
+                      className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink focus:border-accent [color-scheme:light]"
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-paper/40">{t("equipmentDetails.endDate")}</label>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-mut2">{t("equipmentDetails.endDate")}</label>
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper focus:border-wheat [color-scheme:dark]"
+                      className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink focus:border-accent [color-scheme:light]"
                     />
                   </div>
                 </div>
 
-                {bookError && <p className="mt-3 text-sm text-red-400">{bookError}</p>}
+                {bookError && <p className="mt-3 text-sm text-accent">{bookError}</p>}
 
                 <Button variant="primary" className="mt-6 w-full" onClick={requestBooking} disabled={booking}>
                   {booking ? t("equipmentDetails.sendingRequest") : t("equipmentDetails.requestToBook")}
                 </Button>
-                <p className="mt-3 text-center text-xs text-paper/40">{t("equipmentDetails.ownerWillRespond")}</p>
+                <p className="mt-3 text-center text-xs text-mut2">{t("equipmentDetails.ownerWillRespond")}</p>
               </>
             )}
           </div>

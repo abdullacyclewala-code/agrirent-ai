@@ -1,15 +1,68 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, Sparkles, Tractor, Radar } from "lucide-react";
-import FieldScene from "../three/FieldScene.jsx";
-import { Button, Reveal, SectionLabel } from "../components/ui/Primitives.jsx";
+import { ArrowUpRight, Sparkles, Tractor, Radar, MapPin, ClipboardList } from "lucide-react";
+import HeroMap from "../components/ui/HeroMap.jsx";
+import LanguageSwitcher from "../components/ui/LanguageSwitcher.jsx";
+import { Reveal, SectionLabel, StatTile } from "../components/ui/Primitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { supabase } from "../lib/supabase.js";
+
+function greetingKey(hour) {
+  if (hour < 12) return "greetMorning";
+  if (hour < 17) return "greetAfternoon";
+  return "greetEvening";
+}
 
 export default function Dashboard() {
-  const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { t, i18n } = useTranslation();
+  const { profile, user } = useAuth();
   const isOwnerMode = profile?.is_owner && !profile?.is_farmer;
+  const [stats, setStats] = useState({ equipment: "—", bookings: "—", latest: "—" });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [eqRes, bkRes] = await Promise.all([
+          supabase.from("equipment").select("id", { count: "exact", head: true }).eq("is_available", true),
+          user
+            ? supabase
+                .from("bookings")
+                .select("status,created_at")
+                .or(`farmer_id.eq.${user.id},owner_id.eq.${user.id}`)
+                .order("created_at", { ascending: false })
+                .limit(20)
+            : Promise.resolve({ data: [] }),
+        ]);
+        if (cancelled) return;
+        const rows = bkRes.data || [];
+        const active = rows.filter((b) => ["Requested", "Confirmed", "In Use"].includes(b.status)).length;
+        setStats({
+          equipment: eqRes.count ?? "—",
+          bookings: user ? active : "—",
+          latest: rows[0]?.status || "—",
+        });
+      } catch {
+        /* keep fallbacks — stats must never break the dashboard */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const locale =
+    i18n.resolvedLanguage === "hi" ? "hi-IN" : i18n.resolvedLanguage === "mr" ? "mr-IN" : "en-IN";
+  const today = new Date().toLocaleDateString(locale, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+  const displayName = profile?.name || user?.email?.split("@")[0] || "";
+  const firstName = displayName.split(" ")[0];
 
   const steps = [
     { n: "01", title: t("dashboard.step1Title"), desc: t("dashboard.step1Desc"), icon: Sparkles },
@@ -19,74 +72,93 @@ export default function Dashboard() {
 
   return (
     <main className="grain">
-      {/* ---------------- HERO ---------------- */}
-      <section className="relative overflow-hidden border-b border-white/5">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-6 px-5 pb-10 pt-8 md:grid-cols-[1.05fr_0.95fr] md:gap-4 md:px-8 md:pb-0 md:pt-0">
-          {/* Text side */}
-          <div className="relative z-10 order-2 min-w-0 md:order-1 md:py-24">
-            <motion.h1
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.05 }}
-              className="font-display text-4xl font-bold leading-[1.05] text-paper sm:text-5xl lg:text-6xl"
-            >
-              {t("dashboard.heroTitleLine1")}
-              <br />
-              {t("dashboard.heroTitleLine2")} <span className="text-wheat">{t("dashboard.heroTitleField")}</span>,
-              <br />
-              {t("dashboard.heroTitleLine3")}
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.15 }}
-              className="mt-5 max-w-md text-base text-paper/60"
-            >
-              {t("dashboard.heroSubtitle")}
-            </motion.p>
-            <motion.div
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, delay: 0.25 }}
-              className="mt-8 flex flex-wrap gap-3"
-            >
-              <Link to={isOwnerMode ? "/equipment/new" : "/describe-job"}>
-                <Button variant="primary">
-                  {isOwnerMode ? t("dashboard.listEquipment") : t("dashboard.describeJob")} <ArrowUpRight size={16} />
-                </Button>
+      <div className="mx-auto max-w-7xl px-5 pt-6 md:px-8 md:pt-8">
+        {/* ---------------- PAGE HEADER ---------------- */}
+        <div className="flex items-center justify-between gap-3 border-b border-line pb-4">
+          <h2 className="font-display text-2xl font-semibold text-ink">{t("dashboard.overview")}</h2>
+          <div className="flex items-center gap-2">
+            {profile?.location_label && (
+              <span className="chip hidden sm:inline-flex">
+                <MapPin size={12} /> {profile.location_label}
+              </span>
+            )}
+            <LanguageSwitcher />
+          </div>
+        </div>
+
+        {/* ---------------- HERO ---------------- */}
+        <motion.div
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+          className="hero hero-dash mt-6"
+        >
+          <div className="h-in">
+            <div className="h-kicker">{today}</div>
+            <h1>
+              {t(`dashboard.${greetingKey(new Date().getHours())}`)}
+              {firstName ? (
+                <>
+                  , <em>{firstName}</em>
+                </>
+              ) : null}
+            </h1>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <span className="chip">{isOwnerMode ? t("common.owner") : t("common.farmer")}</span>
+              {profile?.location_label && (
+                <span className="chip">
+                  <MapPin size={12} /> {profile.location_label}
+                </span>
+              )}
+            </div>
+            <p>{t("dashboard.heroSubtitle")}</p>
+            <div className="h-cta">
+              <Link to={isOwnerMode ? "/equipment/new" : "/describe-job"} className="btn btn-solid">
+                {isOwnerMode ? t("dashboard.listEquipment") : t("dashboard.describeJob")}{" "}
+                <ArrowUpRight size={16} />
               </Link>
-            </motion.div>
+              <Link to="/bookings" className="btn btn-ghost">
+                <ClipboardList size={16} /> {t("dashboard.myBookings")}
+              </Link>
+            </div>
           </div>
+          <HeroMap caption={t("dashboard.mapCaption")} />
+        </motion.div>
 
-          {/* 3D side */}
-          <div className="relative order-1 -mx-5 h-[360px] min-w-0 overflow-hidden sm:h-[440px] md:order-2 md:mx-0 md:h-[640px]">
-            <FieldScene className="h-full w-full" interactive={true} cameraDistance={15} />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-ink via-transparent to-transparent md:bg-gradient-to-l" />
-          </div>
+        {/* ---------------- STATS ---------------- */}
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Reveal>
+            <StatTile value={stats.equipment} label={t("dashboard.statEquipment")} />
+          </Reveal>
+          <Reveal delay={0.08}>
+            <StatTile value={stats.bookings} label={t("dashboard.statBookings")} />
+          </Reveal>
+          <Reveal delay={0.16}>
+            <StatTile value={stats.latest} label={t("dashboard.statLatest")} accent />
+          </Reveal>
         </div>
-      </section>
 
-      <div className="mx-auto max-w-7xl px-5 py-14 md:px-8 md:py-20">
         {/* ---------------- HOW IT WORKS ---------------- */}
-        <SectionLabel eyebrow={t("dashboard.processEyebrow")} title={t("dashboard.processTitle")} />
-        <div className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
-          <div className="absolute left-0 right-0 top-8 hidden h-px bg-white/10 md:block" />
-          {steps.map((s, i) => (
-            <Reveal key={s.n} delay={i * 0.12}>
-              <div className="relative rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-wheat/15 text-wheat">
-                    <s.icon size={18} />
-                  </span>
-                  <span className="font-mono text-xs text-paper/30">{s.n}</span>
+        <div className="py-14 md:py-20">
+          <SectionLabel eyebrow={t("dashboard.processEyebrow")} title={t("dashboard.processTitle")} />
+          <div className="relative grid grid-cols-1 gap-6 md:grid-cols-3">
+            <div className="absolute left-0 right-0 top-8 hidden h-px bg-line md:block" />
+            {steps.map((s, i) => (
+              <Reveal key={s.n} delay={i * 0.12}>
+                <div className="card relative p-6">
+                  <div className="mb-4 flex items-center justify-between">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-soft text-accent">
+                      <s.icon size={18} />
+                    </span>
+                    <span className="font-mono text-xs text-mut2">{s.n}</span>
+                  </div>
+                  <h3 className="font-display text-lg font-semibold text-ink">{s.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-mut">{s.desc}</p>
                 </div>
-                <h3 className="font-display text-lg font-semibold text-paper">{s.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-paper/55">{s.desc}</p>
-              </div>
-            </Reveal>
-          ))}
+              </Reveal>
+            ))}
+          </div>
         </div>
-
       </div>
     </main>
   );

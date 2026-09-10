@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-@theme {
-  /* Color tokens — dusk field palette */
-  --color-ink: #0e1f17;
-  --color-forest: #17301f;
-  --color-forest-2: #1f3d29;
-  --color-moss: #4b7a58;
-  --color-moss-light: #8fb79a;
-  --color-wheat: #e8b34a;
-  --color-wheat-dim: #a9803a;
-  --color-sky: #7fa6c9;
-  --color-sky-dim: #4d6d87;
-  --color-soil: #6b4a32;
-  --color-paper: #f6f3ea;
-  --color-paper-2: #efe9d8;
-  --color-clay: #c96b4a;
-  --color-leaf: #6fbf73;
-  --color-rust: #c65b4e;
+/* ============================================================
+   AgriRent AI theme — "Ivory paper · espresso ink · clay
+   terracotta · haldi gold · moss green."
+   Light warm theme: paper page bg, dark soil hero panel.
+   ============================================================ */
+:root {
+  /* core neutrals */
+  --ink: #251c11;        /* espresso — headings, body text */
+  --ink-2: #4a3d2b;
+  --mut: #83745d;        /* muted body text */
+  --mut2: #b3a68e;       /* faint text / placeholder */
+  --paper: #faf6ec;      /* warm ivory — page background */
+  --card: #fffdf7;
+  --line: #eae1cd;       /* hairline borders — always solid */
+  --line-2: #f1ebdc;
 
-  --font-display: "Space Grotesk", "Inter", sans-serif;
-  --font-body: "Inter", sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
+  /* accents */
+  --accent: #a8431f;     /* clay terracotta — primary action */
+  --accent-2: #91381a;
+  --accent-soft: #f7e7db;
+  --gold: #b98523;       /* haldi gold — highlights */
+  --gold-soft: #f7eed6;
+  --sage: #5e6e3e;       /* moss — positive / secondary */
+  --sage-on: #c8d69c;    /* light moss for dark surfaces */
+  --sage-soft: #edf0dd;
+  --night: #241a0e;      /* deep soil — hero panel */
+
+  /* type */
+  --serif: "Fraunces", Georgia, "Iowan Old Style", Palatino, "Noto Serif Devanagari", serif;
+  --sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Mukta", "Noto Sans Devanagari", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+
+  --shadow-card: 0 1px 2px rgba(37, 28, 17, 0.04), 0 4px 16px rgba(37, 28, 17, 0.04);
+
+  color-scheme: light;
+}
+
+@theme {
+  --color-ink: #251c11;
+  --color-ink-2: #4a3d2b;
+  --color-mut: #83745d;
+  --color-mut2: #b3a68e;
+  --color-paper: #faf6ec;
+  --color-card: #fffdf7;
+  --color-line: #eae1cd;
+  --color-line-2: #f1ebdc;
+  --color-accent: #a8431f;
+  --color-accent-2: #91381a;
+  --color-accent-soft: #f7e7db;
+  --color-gold: #b98523;
+  --color-gold-soft: #f7eed6;
+  --color-sage: #5e6e3e;
+  --color-sage-on: #c8d69c;
+  --color-sage-soft: #edf0dd;
+  --color-night: #241a0e;
+
+  /* legacy aliases — kept so older class names still resolve to
+     on-palette colours if any are missed during migration */
+  --color-forest: #2c2211;
+  --color-forest-2: #241a0e;
+  --color-moss: #5e6e3e;
+  --color-moss-light: #7a8b4f;
+  --color-wheat: #b98523;
+  --color-wheat-dim: #8a6419;
+  --color-sky: #5e6e3e;
+  --color-sky-dim: #46532f;
+  --color-soil: #6b4a32;
+  --color-clay: #a8431f;
+  --color-leaf: #5e6e3e;
+  --color-rust: #a8431f;
+
+  --font-display: "Fraunces", Georgia, "Iowan Old Style", Palatino, "Noto Serif Devanagari", serif;
+  --font-body: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Mukta", "Noto Sans Devanagari", sans-serif;
+  --font-sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Mukta", "Noto Sans Devanagari", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
 
   --animate-drift: drift 18s linear infinite;
   --animate-float-slow: float-slow 6s ease-in-out infinite;
@@ -46,6 +100,9 @@
   from { opacity: 0; transform: translateY(24px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes psSweep {
+  to { transform: rotate(1turn); }
+}
 
 html, body, #root { height: 100%; }
 
@@ -55,10 +112,12 @@ html {
 }
 
 body {
-  background: var(--color-ink);
-  color: var(--color-paper);
-  font-family: var(--font-body);
+  font-family: var(--sans);
+  background: var(--paper);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  line-height: 1.6;
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
@@ -76,21 +135,32 @@ img, canvas, svg {
   max-width: 100%;
 }
 
-::selection { background: var(--color-wheat); color: var(--color-ink); }
+button { font-family: inherit; cursor: pointer; }
+
+::selection { background: var(--gold-soft); color: var(--ink); }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--color-ink); }
-::-webkit-scrollbar-thumb { background: var(--color-forest-2); border-radius: 8px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-moss); }
+::-webkit-scrollbar-track { background: var(--paper); }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 8px; }
+::-webkit-scrollbar-thumb:hover { background: var(--mut2); }
 
 :focus-visible {
-  outline: 2px solid var(--color-wheat);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-.font-display { font-family: var(--font-display); }
-.font-mono { font-family: var(--font-mono); }
+button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+.font-display { font-family: var(--serif); }
+.font-mono { font-family: var(--mono); }
+
+input[type="range"] { accent-color: var(--accent); }
+input[type="date"] { color-scheme: light; }
 
 .grain { position: relative; }
 .grain::after {
@@ -102,8 +172,296 @@ img, canvas, svg {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
+/* ============================================================
+   Core primitives (buttons, chips, cards)
+   ============================================================ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line-2);
+}
+.card-head h3 {
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  padding: 12px 24px;
+  border-radius: 999px;
+  transition: background 0.16s, border-color 0.16s, transform 0.12s, box-shadow 0.16s;
+  border: none;
+  background: none;
+  color: inherit;
+  text-decoration: none;
+}
+.btn svg { width: 16px; height: 16px; }
+.btn:active { transform: scale(0.98); }
+.btn-dark {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(145, 56, 26, 0.35);
+}
+.btn-dark:hover { background: var(--accent-2); }
+.btn-line {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+.btn-line:hover { border-color: var(--mut2); }
+.btn-sm { padding: 8px 16px; font-size: 13px; }
+.btn-lg { padding: 14px 28px; font-size: 15px; }
+.btn-solid { background: #f6efdf; color: var(--ink); }
+.btn-solid:hover { background: #fff; }
+.btn-ghost { color: #ece4d2; border: 1px solid rgba(236, 228, 210, 0.28); }
+.btn-ghost:hover { border-color: rgba(236, 228, 210, 0.55); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--mut);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+.h1 {
+  font-family: var(--serif);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.12;
+  margin: 8px 0 6px;
+}
+.lede {
+  color: var(--mut);
+  font-size: 14.5px;
+  max-width: 58ch;
+  line-height: 1.7;
+}
+
+/* ============================================================
+   HERO — dark soil panel with the live India map
+   ============================================================ */
+.hero {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  background: radial-gradient(120% 160% at 85% 0%, #33271633 0%, transparent 55%),
+    linear-gradient(140deg, #2b2113 0%, #201709 100%);
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: center;
+  min-height: 420px;
+}
+.hero .h-in {
+  position: relative;
+  z-index: 2;
+  padding: clamp(28px, 4vw, 52px);
+  color: #efe8d7;
+}
+.hero .h-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--sage-on);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.hero .h-kicker::before {
+  content: "";
+  width: 22px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--sage-on);
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(30px, 3.6vw, 44px);
+  font-weight: 500;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-top: 18px;
+}
+.hero h1 em {
+  font-style: italic;
+  color: #f3c96b;
+}
+.hero p {
+  color: #bcb29b;
+  font-size: 14.5px;
+  line-height: 1.7;
+  margin-top: 16px;
+  max-width: 44ch;
+}
+.hero .h-cta {
+  display: flex;
+  gap: 12px;
+  margin-top: 26px;
+  flex-wrap: wrap;
+}
+.h-map {
+  position: relative;
+  align-self: stretch;
+  min-height: 300px;
+}
+
+/* ---- 3D scene: tilted floating map plane + radar sweep ---- */
+.ps-scene {
+  position: absolute;
+  inset: 0;
+  perspective: 1100px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.ps-floor {
+  position: absolute;
+  left: 50%;
+  top: 60%;
+  width: 72%;
+  height: 38%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(243, 201, 107, 0.09),
+    transparent 65%
+  );
+  filter: blur(8px);
+}
+.ps-plane {
+  position: relative;
+  width: 86%;
+  max-width: 560px;
+  aspect-ratio: 800 / 850;
+  transform: rotateX(52deg) rotateZ(-14deg);
+  transform-style: preserve-3d;
+}
+.ps-plane svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.ps-sweep {
+  position: absolute;
+  inset: -6%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(
+    from 0deg at 50% 50%,
+    rgba(200, 214, 156, 0) 0deg,
+    rgba(200, 214, 156, 0) 308deg,
+    rgba(200, 214, 156, 0.06) 340deg,
+    rgba(236, 244, 204, 0.17) 357deg,
+    rgba(200, 214, 156, 0) 360deg
+  );
+  animation: psSweep 7s linear infinite;
+}
+
+.h-map svg {
+  width: 100%;
+  height: 100%;
+}
+.h-cap {
+  position: absolute;
+  bottom: 14px;
+  right: 18px;
+  z-index: 2;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: #857a63;
+  text-transform: uppercase;
+}
+
+/* dashboard hero variant — greeting inside the dark panel */
+.hero-dash {
+  min-height: 380px;
+}
+.hero-dash h1 {
+  font-size: clamp(26px, 3vw, 38px);
+}
+.hero .chip {
+  background: rgba(255, 253, 247, 0.06);
+  border-color: rgba(236, 228, 210, 0.22);
+  color: #d9d0bb;
+}
+
+/* ============================================================
+   MOBILE (≤740px) — copy on top, map fills the lower half
+   ============================================================ */
+@media (max-width: 740px) {
+  .hero {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+    min-height: 0;
+  }
+  .hero .h-in {
+    padding: 26px 22px 6px;
+  }
+  .hero h1 {
+    font-size: 29px;
+    margin-top: 14px;
+  }
+  .hero p {
+    font-size: 13.5px;
+    margin-top: 12px;
+    max-width: none;
+  }
+  .hero .h-cta {
+    margin-top: 20px;
+  }
+  .hero .h-cta .btn {
+    flex: 1 1 auto;
+  }
+  .hero .h-map {
+    min-height: 250px;
+  }
+  .h-cap {
+    bottom: 10px;
+    right: 14px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+  .page-in,
+  .skel {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;

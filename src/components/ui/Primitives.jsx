@@ -7,8 +7,8 @@ export function Chip({ active, children, onClick, icon }) {
       onClick={onClick}
       className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-all duration-200 ${
         active
-          ? "border-wheat bg-wheat text-ink shadow-[0_0_0_4px_rgba(232,179,74,0.15)]"
-          : "border-white/10 bg-white/5 text-paper/80 hover:border-white/25 hover:bg-white/10"
+          ? "border-accent bg-accent text-white shadow-[0_0_0_4px_rgba(168,67,31,0.15)]"
+          : "border-line bg-card text-mut hover:border-mut2 hover:text-ink"
       }`}
     >
       {icon && <span className="text-base leading-none">{icon}</span>}
@@ -19,12 +19,12 @@ export function Chip({ active, children, onClick, icon }) {
 
 export function Button({ children, variant = "primary", className = "", ...props }) {
   const base =
-    "inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none";
+    "inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition-all duration-200 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none";
   const variants = {
-    primary: "bg-wheat text-ink hover:bg-[#f3c162] shadow-[0_8px_24px_-8px_rgba(232,179,74,0.6)]",
-    ghost: "bg-white/5 text-paper border border-white/10 hover:bg-white/10",
-    outline: "bg-transparent text-wheat border border-wheat/50 hover:bg-wheat/10",
-    dark: "bg-ink text-paper border border-white/10 hover:border-white/25",
+    primary: "bg-accent text-white hover:bg-accent-2 shadow-[0_8px_24px_-8px_rgba(168,67,31,0.6)]",
+    ghost: "bg-card text-ink border border-line hover:border-mut2",
+    outline: "bg-transparent text-accent border border-accent/50 hover:bg-accent-soft",
+    dark: "bg-ink text-paper border border-ink hover:bg-ink-2",
   };
   return (
     <button className={`${base} ${variants[variant]} ${className}`} {...props}>
@@ -35,10 +35,10 @@ export function Button({ children, variant = "primary", className = "", ...props
 
 export function Badge({ tone = "leaf", children }) {
   const tones = {
-    leaf: "bg-leaf/15 text-leaf border-leaf/30",
-    wheat: "bg-wheat/15 text-wheat border-wheat/30",
-    sky: "bg-sky/15 text-sky border-sky/30",
-    rust: "bg-rust/15 text-rust border-rust/30",
+    leaf: "bg-sage-soft text-sage border-sage/30",
+    wheat: "bg-gold-soft text-gold border-gold/30",
+    sky: "bg-sage-soft text-sage border-sage/30",
+    rust: "bg-accent-soft text-accent border-accent/30",
   };
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${tones[tone]}`}>
@@ -51,10 +51,10 @@ export function SectionLabel({ eyebrow, title, sub }) {
   return (
     <div className="mb-8">
       {eyebrow && (
-        <div className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-wheat/80">{eyebrow}</div>
+        <div className="mb-2 font-mono text-xs uppercase tracking-[0.2em] text-accent">{eyebrow}</div>
       )}
-      <h2 className="font-display text-2xl font-semibold text-paper sm:text-3xl">{title}</h2>
-      {sub && <p className="mt-2 max-w-xl text-sm text-paper/60">{sub}</p>}
+      <h2 className="font-display text-2xl font-semibold text-ink sm:text-3xl">{title}</h2>
+      {sub && <p className="mt-2 max-w-xl text-sm text-mut">{sub}</p>}
     </div>
   );
 }
@@ -80,12 +80,12 @@ export function MatchRing({ score = 90, size = 64 }) {
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} fill="none" />
+        <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(37,28,17,0.12)" strokeWidth={stroke} fill="none" />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
-          stroke="#e8b34a"
+          stroke="#b98523"
           strokeWidth={stroke}
           fill="none"
           strokeLinecap="round"
@@ -97,18 +97,18 @@ export function MatchRing({ score = 90, size = 64 }) {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-display text-sm font-bold text-wheat">{score}%</span>
+        <span className="font-display text-sm font-bold text-ink">{score}%</span>
       </div>
     </div>
   );
 }
 
-export function StatTile({ label, value, sub }) {
+export function StatTile({ label, value, sub, accent = false }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-      <div className="font-display text-2xl font-bold text-paper sm:text-3xl">{value}</div>
-      <div className="mt-1 text-xs uppercase tracking-wide text-paper/50">{label}</div>
-      {sub && <div className="mt-2 text-xs text-moss-light">{sub}</div>}
+    <div className="card p-5">
+      <div className={`font-display text-3xl font-semibold sm:text-4xl ${accent ? "text-accent" : "text-ink"}`}>{value}</div>
+      <div className="mt-1 text-sm text-mut">{label}</div>
+      {sub && <div className="mt-2 text-xs text-sage">{sub}</div>}
     </div>
   );
 }

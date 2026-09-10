@@ -14,7 +14,7 @@
     "findEquipment": "Find Equipment",
     "bookings": "Bookings",
     "profile": "Profile",
-    "brand": "Kisan Match"
+    "brand": "AgriRent AI"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -37,7 +37,7 @@
     "heroTitleLine2": "for the right",
     "heroTitleField": "field",
     "heroTitleLine3": "at the right time.",
-    "heroSubtitle": "Kisan Match connects farmers with nearby tractors, harvesters and implements — matched by a model that understands your crop, land and schedule.",
+    "heroSubtitle": "AgriRent AI connects farmers with nearby tractors, harvesters and implements — matched by a model that understands your crop, land and schedule.",
     "listEquipment": "List your equipment",
     "describeJob": "Describe your job",
     "processEyebrow": "Process",
@@ -47,7 +47,16 @@
     "step2Title": "Get matched by the model",
     "step2Desc": "Our ML model ranks nearby equipment by fit, availability, distance and price.",
     "step3Title": "Book and track",
-    "step3Desc": "Confirm in a tap, then track your equipment from dispatch to field."
+    "step3Desc": "Confirm in a tap, then track your equipment from dispatch to field.",
+    "overview": "Overview",
+    "greetMorning": "Good morning",
+    "greetAfternoon": "Good afternoon",
+    "greetEvening": "Good evening",
+    "myBookings": "My bookings",
+    "mapCaption": "Live equipment network · Pan-India",
+    "statEquipment": "Equipment available now",
+    "statBookings": "Active bookings",
+    "statLatest": "Latest booking"
   },
   "describeJob": {
     "freetextTitle": "Describe your job, in your own words",

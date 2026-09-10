@@ -11,14 +11,14 @@ import { subscribeToUserBookings } from "../lib/realtime.js";
 import { expireStaleRequests } from "../lib/bookingLifecycle.js";
 
 const STATUS_TONE = {
-  Requested: "bg-sky/15 text-sky",
-  Confirmed: "bg-wheat/15 text-wheat",
-  "In Use": "bg-leaf/15 text-leaf",
-  Completed: "bg-white/10 text-paper/60",
-  Rejected: "bg-rust/15 text-rust",
-  Cancelled: "bg-rust/15 text-rust",
-  Expired: "bg-rust/15 text-rust",
-  Conflicted: "bg-rust/15 text-rust",
+  Requested: "bg-gold-soft text-gold",
+  Confirmed: "bg-accent-soft text-accent",
+  "In Use": "bg-sage-soft text-sage",
+  Completed: "bg-line text-mut",
+  Rejected: "bg-line text-mut",
+  Cancelled: "bg-line text-mut",
+  Expired: "bg-line text-mut",
+  Conflicted: "bg-line text-mut",
 };
 
 export default function MyBookings() {
@@ -79,15 +79,15 @@ export default function MyBookings() {
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-10 md:px-8 md:py-14">
-      <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">{t("myBookings.title")}</h1>
-      <p className="mt-1 text-sm text-paper/50">{t("myBookings.subtitle")}</p>
+      <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">{t("myBookings.title")}</h1>
+      <p className="mt-1 text-sm text-mut">{t("myBookings.subtitle")}</p>
 
       {bookings === null ? (
-        <div className="py-16 text-center text-sm text-paper/40">{t("common.loading")}</div>
+        <div className="py-16 text-center text-sm text-mut2">{t("common.loading")}</div>
       ) : bookings.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-16 text-center">
-          <p className="text-paper/60">{t("myBookings.empty")}</p>
-          <Link to="/describe-job" className="mt-3 inline-block text-sm font-medium text-wheat hover:text-[#f3c162]">
+        <div className="mt-8 rounded-2xl border border-dashed border-line bg-card py-16 text-center">
+          <p className="text-mut">{t("myBookings.empty")}</p>
+          <Link to="/describe-job" className="mt-3 inline-block text-sm font-medium text-accent hover:text-accent-2">
             {t("myBookings.emptyCta")}
           </Link>
         </div>
@@ -99,19 +99,19 @@ export default function MyBookings() {
               <Reveal key={b.id}>
                 <Link
                   to={`/booking/${b.id}`}
-                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-4 transition-colors hover:border-white/25"
+                  className="flex items-center gap-4 rounded-2xl border border-line bg-card p-4 transition-colors hover:border-mut2"
                 >
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
                     <EquipmentArt category={artCategoryFor(b.equipment?.equipment_type)} className="h-full w-full" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="truncate font-display text-sm font-semibold text-paper">{b.equipment?.name}</h4>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${STATUS_TONE[b.status] || "bg-white/10 text-paper/50"}`}>
+                      <h4 className="truncate font-display text-sm font-semibold text-ink">{b.equipment?.name}</h4>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${STATUS_TONE[b.status] || "bg-line text-mut"}`}>
                         {b.status}
                       </span>
                     </div>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-paper/45">
+                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-mut">
                       <span className="flex items-center gap-1"><Calendar size={11} /> {b.start_date} → {b.end_date}</span>
                       {b.equipment?.location_label && (
                         <span className="flex items-center gap-1"><MapPin size={11} /> {b.equipment.location_label}</span>

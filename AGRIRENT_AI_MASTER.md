@@ -8,6 +8,7 @@
 ## 0. STATUS *(update this every session)*
 
 **Phase:** 6 — closing deviations found in a post-MVP audit (see table below)
+**Theme (Sept 2026):** UI migrated from the dark "dusk field" theme to the light ivory-paper/espresso/clay theme (Fraunces + Instrument Sans); Dashboard hero is now a greeting panel with an animated pan-India network map (`src/components/ui/HeroMap.jsx` + `src/data/india.json`, SMIL packets/sensors/radar — replaces the Three.js `FieldScene`, which is kept as unused dead code); "Kisan Match" renamed to "AgriRent AI" everywhere including storage keys (`agrirent_job`, `agrirent_matches`, `agrirent_lang`) and package name.
 **Currently building:** Phase 6, item-by-item, in this order: (1) i18n (English/Hindi/Marathi) — ✅ done, see item 1 in the table below, (2) multilingual semantic double-check via Cloudflare Workers AI (BGE-M3) — ✅ done, see item 2 in the table below (originally shipped on a self-hosted Hugging Face Space, then migrated to Cloudflare Workers AI in a follow-up pass — see that row's changelog), (3) equipment image upload — next up, (4) geo distance filtering, (5) real availability_slots calendar, (6) PWA install/offline. TypeScript and Zustand from the original §2 stack are intentionally NOT being adopted — plain JS/JSX and React Context are staying as-is; this is a deliberate, permanent decision, not a pending item.
 
 | Phase | Item | Status |

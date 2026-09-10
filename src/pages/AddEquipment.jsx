@@ -106,22 +106,22 @@ export default function AddEquipment() {
   };
 
   if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-paper/50">{t("common.loading")}</div>;
+    return <div className="flex min-h-[60vh] items-center justify-center text-mut">{t("common.loading")}</div>;
   }
 
   return (
     <main className="mx-auto min-h-[calc(100vh-72px)] max-w-2xl px-5 py-10 md:px-8 md:py-16">
-      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-paper/50 hover:text-paper">
+      <button onClick={() => navigate(-1)} className="mb-6 flex items-center gap-1.5 text-sm text-mut hover:text-ink">
         <ArrowLeft size={16} /> {t("common.back")}
       </button>
 
-      <h1 className="font-display text-2xl font-bold text-paper sm:text-3xl">
+      <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
         {isEdit ? t("addEquipment.editTitle") : t("addEquipment.newTitle")}
       </h1>
-      <p className="mt-2 text-sm text-paper/55">{t("addEquipment.subtitle")}</p>
+      <p className="mt-2 text-sm text-mut">{t("addEquipment.subtitle")}</p>
 
       {error && (
-        <div className="mt-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+        <div className="mt-6 rounded-xl border border-accent/30 bg-accent-soft px-4 py-3 text-sm text-accent">
           {error}
         </div>
       )}
@@ -132,7 +132,7 @@ export default function AddEquipment() {
             value={form.name}
             onChange={(e) => set("name", e.target.value)}
             placeholder={t("addEquipment.namePlaceholder")}
-            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper placeholder:text-paper/30 focus:border-wheat"
+            className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink placeholder:text-mut2 focus:border-accent"
           />
         </Field>
 
@@ -183,7 +183,7 @@ export default function AddEquipment() {
               value={form.hp}
               onChange={(e) => set("hp", e.target.value)}
               placeholder={t("addEquipment.hpPlaceholder")}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper placeholder:text-paper/30 focus:border-wheat"
+              className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink placeholder:text-mut2 focus:border-accent"
             />
           </Field>
           <Field label={t("addEquipment.radiusLabel")}>
@@ -192,7 +192,7 @@ export default function AddEquipment() {
               min="1"
               value={form.service_area_radius_km}
               onChange={(e) => set("service_area_radius_km", e.target.value)}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper focus:border-wheat"
+              className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink focus:border-accent"
             />
           </Field>
         </div>
@@ -205,7 +205,7 @@ export default function AddEquipment() {
               value={form.price}
               onChange={(e) => set("price", e.target.value)}
               placeholder={t("addEquipment.pricePlaceholder")}
-              className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper placeholder:text-paper/30 focus:border-wheat"
+              className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink placeholder:text-mut2 focus:border-accent"
             />
           </Field>
           <Field label={t("addEquipment.perLabel")}>
@@ -228,7 +228,7 @@ export default function AddEquipment() {
             value={form.location_label}
             onChange={(e) => set("location_label", e.target.value)}
             placeholder={t("addEquipment.locationPlaceholder")}
-            className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-paper placeholder:text-paper/30 focus:border-wheat"
+            className="w-full rounded-xl border border-line bg-card px-4 py-3 text-ink placeholder:text-mut2 focus:border-accent"
           />
         </Field>
 
@@ -246,7 +246,7 @@ export default function AddEquipment() {
         {saving ? t("addEquipment.saving") : isEdit ? t("addEquipment.saveChanges") : t("addEquipment.publishListing")}
       </Button>
       {!canSave && (
-        <p className="mt-3 text-center text-xs text-paper/40">
+        <p className="mt-3 text-center text-xs text-mut2">
           {t("addEquipment.requiredHint")}
         </p>
       )}
@@ -258,8 +258,8 @@ function Field({ label, hint, children }) {
   return (
     <div>
       <div className="mb-2 flex items-baseline justify-between">
-        <label className="text-sm font-medium text-paper/80">{label}</label>
-        {hint && <span className="text-xs text-paper/35">{hint}</span>}
+        <label className="text-sm font-medium text-ink-2">{label}</label>
+        {hint && <span className="text-xs text-mut2">{hint}</span>}
       </div>
       {children}
     </div>
