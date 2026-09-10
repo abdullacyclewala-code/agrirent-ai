@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
+import { bookingStatusLabel } from "../lib/equipmentDisplay.js";
 import { subscribeToUserBookings } from "../lib/realtime.js";
 import { expireStaleRequests } from "../lib/bookingLifecycle.js";
 
@@ -107,7 +108,7 @@ export default function MyBookings() {
                     <div className="flex items-center gap-2">
                       <h4 className="truncate font-display text-sm font-semibold text-ink">{b.equipment?.name}</h4>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${STATUS_TONE[b.status] || "bg-line text-mut"}`}>
-                        {b.status}
+                        {bookingStatusLabel(b.status, t)}
                       </span>
                     </div>
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-mut">

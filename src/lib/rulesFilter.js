@@ -48,7 +48,7 @@ function candidateEquipmentTypes({ operation, crop }) {
  * @param {Array} equipmentRows - rows from `equipment` table (+ owner name joined in as `owner_name`)
  * @param {{crop:string|null, operation:string, area_acres:number|null}} requirement
  * @param {string} currentUserId - excludes the user's own listings (§4.5 edge case)
- * @param {{distanceReason?: (km:number)=>string}} opts - optional i18n reason formatter for distance
+ * @param {{distanceReason?: (km:number)=>string, suitedFor?: (op:string)=>string, usedForCrop?: (crop:string)=>string, hpFit?: (hp:number,acres:number)=>string, hpOutside?: (hp:number)=>string, priceLine?: (price:number,unit:string)=>string}} opts - i18n reason formatters (DescribeJob passes t-based ones; English fallback when omitted)
  * @returns {{results: Array, relaxedHp: boolean}}
  */
 export function runRulesFilter(equipmentRows, requirement, currentUserId, opts = {}) {
@@ -93,24 +93,31 @@ export function runRulesFilter(equipmentRows, requirement, currentUserId, opts =
     let score = 75;
     const reasons = [];
 
+    const fmt = {
+      suitedFor: opts.suitedFor || ((op) => `Suited for ${String(op).replace(/_/g, " ")}`),
+      usedForCrop: opts.usedForCrop || ((c) => `Used for ${c} before`),
+      hpFit: opts.hpFit || ((hp, ac) => `${hp} HP fits your ${ac} acre job`),
+      hpOutside: opts.hpOutside || ((hp) => `${hp} HP — outside the typical range`),
+      priceLine: opts.priceLine || ((pr, un) => `₹${pr} / ${un}`),
+    };
     if (candidateTypes.includes(row.equipment_type)) {
       score += 10;
-      reasons.push(`Suited for ${operation.replace(/_/g, " ")}`);
+      reasons.push(fmt.suitedFor(operation));
     }
     if (crop && row.compatible_crops?.includes(crop)) {
       score += 8;
-      reasons.push(`Used for ${crop} before`);
+      reasons.push(fmt.usedForCrop(crop));
     }
     if (range && row.hp != null) {
       if (row.hp >= range.min_hp && row.hp <= range.max_hp) {
         score += 10;
-        reasons.push(`${row.hp} HP fits your ${acres} acre job`);
+        reasons.push(fmt.hpFit(row.hp, acres));
       } else {
         score -= 12;
-        reasons.push(`${row.hp} HP — outside the typical range for this job size`);
+        reasons.push(fmt.hpOutside(row.hp));
       }
     }
-    if (row.price) reasons.push(`₹${row.price} / ${row.price_unit}`);
+    if (row.price) reasons.push(fmt.priceLine(row.price, row.price_unit));
     // Gentle proximity nudge (heuristic path only — the ML ranker weighs
     // distance itself via its `distance` feature). Unknown distance (null)
     // neither helps nor hurts: no data, no opinion.

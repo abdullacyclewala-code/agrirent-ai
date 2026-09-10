@@ -1,52 +1,476 @@
 {
   "_synonyms_note": "The 'synonyms' map below (regional/informal term -> canonical taxonomy id) is built from general knowledge of common Hindi/Hinglish agricultural vocabulary, NOT verified against a linguistic corpus or real farmer input — colloquial terms vary a lot by state/district (Punjabi, Marathi, Bhojpuri, etc. all differ from each other and from this list). Treat it as a starting point and expand it as real usage/feedback surfaces missing terms — see backend/app/llm_service.py, which feeds this map straight into the LLM prompt.",
   "crops": [
-    { "id": "cotton", "label": "Cotton", "icon": "☁️" },
-    { "id": "wheat", "label": "Wheat", "icon": "🌾" },
-    { "id": "sugarcane", "label": "Sugarcane", "icon": "🎋" },
-    { "id": "rice", "label": "Rice / Paddy", "icon": "🌱" },
-    { "id": "soybean", "label": "Soybean", "icon": "🫘" },
-    { "id": "groundnut", "label": "Groundnut", "icon": "🥜" },
-    { "id": "maize", "label": "Maize", "icon": "🌽" },
-    { "id": "onion", "label": "Onion", "icon": "🧅" },
-    { "id": "tur", "label": "Tur / Pigeon Pea", "icon": "🌿" },
-    { "id": "gram", "label": "Gram / Chickpea", "icon": "🫛" }
+    {
+      "id": "cotton",
+      "label": "Cotton",
+      "icon": "☁️",
+      "label_hi": "कपास",
+      "label_mr": "कापूस"
+    },
+    {
+      "id": "wheat",
+      "label": "Wheat",
+      "icon": "🌾",
+      "label_hi": "गेहूँ",
+      "label_mr": "गहू"
+    },
+    {
+      "id": "sugarcane",
+      "label": "Sugarcane",
+      "icon": "🎋",
+      "label_hi": "गन्ना",
+      "label_mr": "ऊस"
+    },
+    {
+      "id": "rice",
+      "label": "Rice / Paddy",
+      "icon": "🌱",
+      "label_hi": "धान",
+      "label_mr": "भात"
+    },
+    {
+      "id": "soybean",
+      "label": "Soybean",
+      "icon": "🫘",
+      "label_hi": "सोयाबीन",
+      "label_mr": "सोयाबीन"
+    },
+    {
+      "id": "groundnut",
+      "label": "Groundnut",
+      "icon": "🥜",
+      "label_hi": "मूंगफली",
+      "label_mr": "शेंगदाणा"
+    },
+    {
+      "id": "maize",
+      "label": "Maize",
+      "icon": "🌽",
+      "label_hi": "मक्का",
+      "label_mr": "मका"
+    },
+    {
+      "id": "onion",
+      "label": "Onion",
+      "icon": "🧅",
+      "label_hi": "प्याज़",
+      "label_mr": "कांदा"
+    },
+    {
+      "id": "tur",
+      "label": "Tur / Pigeon Pea",
+      "icon": "🌿",
+      "label_hi": "अरहर",
+      "label_mr": "तूर"
+    },
+    {
+      "id": "gram",
+      "label": "Gram / Chickpea",
+      "icon": "🫛",
+      "label_hi": "चना",
+      "label_mr": "हरभरा"
+    }
   ],
   "operations": [
-    { "id": "ploughing", "label": "Ploughing", "desc": "Turn and loosen soil before sowing" },
-    { "id": "tilling", "label": "Tilling", "desc": "Break up and mix soil for planting" },
-    { "id": "harrowing", "label": "Harrowing", "desc": "Smooth and level tilled soil" },
-    { "id": "sowing", "label": "Sowing / Seeding", "desc": "Plant seeds at right depth & spacing" },
-    { "id": "spraying", "label": "Spraying", "desc": "Apply pesticide, herbicide or fertiliser" },
-    { "id": "harvesting", "label": "Harvesting", "desc": "Cut and collect the ready crop" },
-    { "id": "threshing", "label": "Threshing", "desc": "Separate grain from stalks/husks" },
-    { "id": "transportation", "label": "Transportation", "desc": "Move produce from field to market" },
-    { "id": "land_leveling", "label": "Land Leveling", "desc": "Flatten field surface for irrigation" },
-    { "id": "irrigation", "label": "Irrigation", "desc": "Water the field efficiently" }
+    {
+      "id": "ploughing",
+      "label": "Ploughing",
+      "desc": "Turn and loosen soil before sowing",
+      "label_hi": "जुताई",
+      "label_mr": "नांगरणी",
+      "desc_hi": "बुवाई से पहले मिट्टी पलटना और भुरभुरी करना",
+      "desc_mr": "पेरणीपूर्वी माती उलटणे व भुसभुशीत करणे"
+    },
+    {
+      "id": "tilling",
+      "label": "Tilling",
+      "desc": "Break up and mix soil for planting",
+      "label_hi": "गोड़ाई",
+      "label_mr": "कुळवणी",
+      "desc_hi": "रोपण के लिए मिट्टी तोड़ना और मिलाना",
+      "desc_mr": "लागवडीसाठी माती फोडणे व मिसळणे"
+    },
+    {
+      "id": "harrowing",
+      "label": "Harrowing",
+      "desc": "Smooth and level tilled soil",
+      "label_hi": "हैरोइंग",
+      "label_mr": "वखरणी",
+      "desc_hi": "जुती मिट्टी को चिकना और समतल करना",
+      "desc_mr": "नांगरलेल्या जमिनीला सपाट व समतल करणे"
+    },
+    {
+      "id": "sowing",
+      "label": "Sowing / Seeding",
+      "desc": "Plant seeds at right depth & spacing",
+      "label_hi": "बुवाई",
+      "label_mr": "पेरणी",
+      "desc_hi": "सही गहराई और दूरी पर बीज बोना",
+      "desc_mr": "योग्य खोली व अंतरावर बियाणे पेरणे"
+    },
+    {
+      "id": "spraying",
+      "label": "Spraying",
+      "desc": "Apply pesticide, herbicide or fertiliser",
+      "label_hi": "छिड़काव",
+      "label_mr": "फवारणी",
+      "desc_hi": "कीटनाशक, खरपतवारनाशक या उर्वरक छिड़कना",
+      "desc_mr": "कीटकनाशक, तणनाशक किंवा खत फवारणे"
+    },
+    {
+      "id": "harvesting",
+      "label": "Harvesting",
+      "desc": "Cut and collect the ready crop",
+      "label_hi": "कटाई",
+      "label_mr": "कापणी",
+      "desc_hi": "तैयार फसल काटना और इकट्ठा करना",
+      "desc_mr": "तयार पीक कापणे व गोळा करणे"
+    },
+    {
+      "id": "threshing",
+      "label": "Threshing",
+      "desc": "Separate grain from stalks/husks",
+      "label_hi": "मड़ाई",
+      "label_mr": "मळणी",
+      "desc_hi": "दाने को डंठल/भूसे से अलग करना",
+      "desc_mr": "दाणे भुसापासून वेगळे करणे"
+    },
+    {
+      "id": "transportation",
+      "label": "Transportation",
+      "desc": "Move produce from field to market",
+      "label_hi": "ढुलाई",
+      "label_mr": "वाहतूक",
+      "desc_hi": "उपज खेत से मंडी तक पहुंचाना",
+      "desc_mr": "शेतमाल शेतातून बाजारात नेणे"
+    },
+    {
+      "id": "land_leveling",
+      "label": "Land Leveling",
+      "desc": "Flatten field surface for irrigation",
+      "label_hi": "समतलीकरण",
+      "label_mr": "सपाटीकरण",
+      "desc_hi": "सिंचाई के लिए खेत समतल करना",
+      "desc_mr": "सिंचनासाठी शेत सपाट करणे"
+    },
+    {
+      "id": "irrigation",
+      "label": "Irrigation",
+      "desc": "Water the field efficiently",
+      "label_hi": "सिंचाई",
+      "label_mr": "सिंचन",
+      "desc_hi": "खेत में कुशलता से पानी देना",
+      "desc_mr": "शेताला कार्यक्षमपणे पाणी देणे"
+    }
   ],
   "equipment_types": [
-    { "id": "tractor", "label": "Tractor" },
-    { "id": "rotavator", "label": "Rotavator" },
-    { "id": "cultivator", "label": "Cultivator" },
-    { "id": "harvester", "label": "Harvester (Combine)" },
-    { "id": "seed_drill", "label": "Seed Drill" },
-    { "id": "sprayer", "label": "Sprayer" },
-    { "id": "thresher", "label": "Thresher" },
-    { "id": "trailer", "label": "Trailer" },
-    { "id": "plough", "label": "Plough (Disc/Mould Board)" },
-    { "id": "leveler", "label": "Leveler" }
+    {
+      "id": "tractor",
+      "label": "Tractor",
+      "label_hi": "ट्रैक्टर",
+      "label_mr": "ट्रॅक्टर"
+    },
+    {
+      "id": "rotavator",
+      "label": "Rotavator",
+      "label_hi": "रोटावेटर",
+      "label_mr": "रोटाव्हेटर"
+    },
+    {
+      "id": "cultivator",
+      "label": "Cultivator",
+      "label_hi": "कल्टीवेटर",
+      "label_mr": "कल्टिव्हेटर"
+    },
+    {
+      "id": "harvester",
+      "label": "Harvester (Combine)",
+      "label_hi": "हार्वेस्टर (कंबाइन)",
+      "label_mr": "हार्वेस्टर (कमाइन)"
+    },
+    {
+      "id": "seed_drill",
+      "label": "Seed Drill",
+      "label_hi": "सीड ड्रिल",
+      "label_mr": "सीड ड्रिल"
+    },
+    {
+      "id": "sprayer",
+      "label": "Sprayer",
+      "label_hi": "स्प्रेयर",
+      "label_mr": "फवारणी पंप"
+    },
+    {
+      "id": "thresher",
+      "label": "Thresher",
+      "label_hi": "थ्रेशर",
+      "label_mr": "मळणी यंत्र"
+    },
+    {
+      "id": "trailer",
+      "label": "Trailer",
+      "label_hi": "ट्रॉली",
+      "label_mr": "ट्रॉली"
+    },
+    {
+      "id": "plough",
+      "label": "Plough (Disc/Mould Board)",
+      "label_hi": "हल (डिस्क)",
+      "label_mr": "नांगर (डिस्क)"
+    },
+    {
+      "id": "leveler",
+      "label": "Leveler",
+      "label_hi": "लेवलर",
+      "label_mr": "लेव्हलर"
+    }
   ],
   "compatibility": [
-    { "equipment_type": "tractor", "operations": ["ploughing", "tilling", "harrowing", "sowing", "transportation", "land_leveling"], "crops": ["cotton", "wheat", "sugarcane", "rice", "soybean", "groundnut", "maize", "onion", "tur", "gram"], "hp_ranges": [ { "max_acres": 10, "min_hp": 35, "max_hp": 50 }, { "max_acres": 999, "min_hp": 50, "max_hp": 90 } ] },
-    { "equipment_type": "rotavator", "operations": ["tilling", "harrowing"], "crops": ["cotton", "wheat", "sugarcane", "rice", "soybean", "groundnut", "maize", "onion", "tur", "gram"], "hp_ranges": [ { "max_acres": 999, "min_hp": 35, "max_hp": 75 } ] },
-    { "equipment_type": "cultivator", "operations": ["tilling", "harrowing"], "crops": ["cotton", "wheat", "soybean", "groundnut", "maize", "gram"], "hp_ranges": [ { "max_acres": 999, "min_hp": 35, "max_hp": 60 } ] },
-    { "equipment_type": "harvester", "operations": ["harvesting"], "crops": ["wheat", "rice", "sugarcane", "maize", "soybean"], "hp_ranges": [ { "max_acres": 999, "min_hp": 90, "max_hp": 150 } ] },
-    { "equipment_type": "seed_drill", "operations": ["sowing"], "crops": ["wheat", "soybean", "groundnut", "maize", "gram", "tur"], "hp_ranges": [ { "max_acres": 999, "min_hp": 35, "max_hp": 55 } ] },
-    { "equipment_type": "sprayer", "operations": ["spraying"], "crops": ["cotton", "wheat", "sugarcane", "rice", "soybean", "groundnut", "maize", "onion", "tur", "gram"], "hp_ranges": [ { "max_acres": 999, "min_hp": 0, "max_hp": 50 } ] },
-    { "equipment_type": "thresher", "operations": ["threshing"], "crops": ["wheat", "rice", "soybean", "gram", "tur"], "hp_ranges": [ { "max_acres": 999, "min_hp": 35, "max_hp": 60 } ] },
-    { "equipment_type": "trailer", "operations": ["transportation"], "crops": ["cotton", "wheat", "sugarcane", "rice", "soybean", "groundnut", "maize", "onion", "tur", "gram"], "hp_ranges": [ { "max_acres": 999, "min_hp": 0, "max_hp": 90 } ] },
-    { "equipment_type": "plough", "operations": ["ploughing"], "crops": ["cotton", "wheat", "sugarcane", "rice", "soybean", "groundnut", "maize", "onion", "tur", "gram"], "hp_ranges": [ { "max_acres": 999, "min_hp": 35, "max_hp": 75 } ] },
-    { "equipment_type": "leveler", "operations": ["land_leveling"], "crops": ["cotton", "wheat", "sugarcane", "rice", "soybean", "groundnut", "maize", "onion", "tur", "gram"], "hp_ranges": [ { "max_acres": 999, "min_hp": 35, "max_hp": 75 } ] }
+    {
+      "equipment_type": "tractor",
+      "operations": [
+        "ploughing",
+        "tilling",
+        "harrowing",
+        "sowing",
+        "transportation",
+        "land_leveling"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "sugarcane",
+        "rice",
+        "soybean",
+        "groundnut",
+        "maize",
+        "onion",
+        "tur",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 10,
+          "min_hp": 35,
+          "max_hp": 50
+        },
+        {
+          "max_acres": 999,
+          "min_hp": 50,
+          "max_hp": 90
+        }
+      ]
+    },
+    {
+      "equipment_type": "rotavator",
+      "operations": [
+        "tilling",
+        "harrowing"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "sugarcane",
+        "rice",
+        "soybean",
+        "groundnut",
+        "maize",
+        "onion",
+        "tur",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 35,
+          "max_hp": 75
+        }
+      ]
+    },
+    {
+      "equipment_type": "cultivator",
+      "operations": [
+        "tilling",
+        "harrowing"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "soybean",
+        "groundnut",
+        "maize",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 35,
+          "max_hp": 60
+        }
+      ]
+    },
+    {
+      "equipment_type": "harvester",
+      "operations": [
+        "harvesting"
+      ],
+      "crops": [
+        "wheat",
+        "rice",
+        "sugarcane",
+        "maize",
+        "soybean"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 90,
+          "max_hp": 150
+        }
+      ]
+    },
+    {
+      "equipment_type": "seed_drill",
+      "operations": [
+        "sowing"
+      ],
+      "crops": [
+        "wheat",
+        "soybean",
+        "groundnut",
+        "maize",
+        "gram",
+        "tur"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 35,
+          "max_hp": 55
+        }
+      ]
+    },
+    {
+      "equipment_type": "sprayer",
+      "operations": [
+        "spraying"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "sugarcane",
+        "rice",
+        "soybean",
+        "groundnut",
+        "maize",
+        "onion",
+        "tur",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 0,
+          "max_hp": 50
+        }
+      ]
+    },
+    {
+      "equipment_type": "thresher",
+      "operations": [
+        "threshing"
+      ],
+      "crops": [
+        "wheat",
+        "rice",
+        "soybean",
+        "gram",
+        "tur"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 35,
+          "max_hp": 60
+        }
+      ]
+    },
+    {
+      "equipment_type": "trailer",
+      "operations": [
+        "transportation"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "sugarcane",
+        "rice",
+        "soybean",
+        "groundnut",
+        "maize",
+        "onion",
+        "tur",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 0,
+          "max_hp": 90
+        }
+      ]
+    },
+    {
+      "equipment_type": "plough",
+      "operations": [
+        "ploughing"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "sugarcane",
+        "rice",
+        "soybean",
+        "groundnut",
+        "maize",
+        "onion",
+        "tur",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 35,
+          "max_hp": 75
+        }
+      ]
+    },
+    {
+      "equipment_type": "leveler",
+      "operations": [
+        "land_leveling"
+      ],
+      "crops": [
+        "cotton",
+        "wheat",
+        "sugarcane",
+        "rice",
+        "soybean",
+        "groundnut",
+        "maize",
+        "onion",
+        "tur",
+        "gram"
+      ],
+      "hp_ranges": [
+        {
+          "max_acres": 999,
+          "min_hp": 35,
+          "max_hp": 75
+        }
+      ]
+    }
   ],
   "synonyms": {
     "jotai": "ploughing",
@@ -55,53 +479,42 @@
     "hal jotna": "ploughing",
     "hal chalana": "ploughing",
     "jot": "ploughing",
-
     "godai": "tilling",
     "jutayi": "tilling",
-
     "vakhar": "harrowing",
     "patela": "harrowing",
-
     "bijai": "sowing",
     "bijayi": "sowing",
     "boai": "sowing",
     "beej boana": "sowing",
     "bowani": "sowing",
-
     "chidkav": "spraying",
     "spray": "spraying",
     "dawai": "spraying",
     "dawa chidakna": "spraying",
     "keetnashak": "spraying",
-
     "katai": "harvesting",
     "kataai": "harvesting",
     "fasal katna": "harvesting",
     "harvest": "harvesting",
-
     "dawani": "threshing",
     "gahai": "threshing",
     "mahai": "threshing",
-
     "dhulai": "transportation",
     "gaadi se ledana": "transportation",
-
     "leveling": "land_leveling",
     "zameen samtal": "land_leveling",
     "patta lagana": "land_leveling",
-
     "sinchai": "irrigation",
     "paani": "irrigation",
     "paani dena": "irrigation",
     "abpashi": "irrigation",
-
     "gaadi": "trailer",
     "trolley": "trailer",
     "rotavetor": "rotavator",
     "rotawator": "rotavator",
     "kalti": "cultivator",
     "hal": "plough",
-
     "kapas": "cotton",
     "rui": "cotton",
     "gehun": "wheat",
@@ -124,4 +537,3 @@
     "arhar": "tur"
   }
 }
-

@@ -7,7 +7,7 @@ import { Button, StatTile, Reveal } from "../components/ui/Primitives.jsx";
 import LanguageSwitcher from "../components/ui/LanguageSwitcher.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../lib/supabase.js";
-import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { equipmentTypeLabel, priceUnitLabel } from "../lib/equipmentDisplay.js";
 import { enablePushNotifications } from "../lib/push.js";
 import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
 import { deleteListingPhotos } from "../lib/imageUpload.js";
@@ -26,7 +26,7 @@ export default function Profile() {
   const handleEnableNotifications = async () => {
     setPushBusy(true);
     setPushResult(null);
-    const result = await enablePushNotifications(user?.id);
+    const result = await enablePushNotifications(user?.id, { t });
     setPushResult(result);
     setPushBusy(false);
   };
@@ -172,7 +172,7 @@ export default function Profile() {
                       <div>
                         <div className="font-medium text-ink">{l.name}</div>
                         <div className="text-xs text-mut">
-                          {equipmentTypeLabel(l.equipment_type)} · ₹{l.price}/{l.price_unit}
+                          {equipmentTypeLabel(l.equipment_type)} · ₹{l.price}/{priceUnitLabel(l.price_unit, t)}
                           {l.hp ? ` · ${l.hp} HP` : ""}
                         </div>
                         <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${

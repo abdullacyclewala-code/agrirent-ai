@@ -6,8 +6,8 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Badge, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentGallery } from "../components/ui/EquipmentPhoto.jsx";
-import { equipmentTypeLabel, operationLabel, cropLabel } from "../lib/equipmentDisplay.js";
-import { datesOverlap } from "../lib/bookingLifecycle.js";
+import { equipmentTypeLabel, operationLabel, cropLabel, priceUnitLabel } from "../lib/equipmentDisplay.js";
+import { fetchSlots, checkAvailability, formatSlotRange } from "../lib/availability.js";
 
 export default function EquipmentDetails() {
   const { t } = useTranslation();
@@ -25,6 +25,8 @@ export default function EquipmentDetails() {
   const [eq, setEq] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  // null = slots failed to load (windows section stays hidden).
+  const [slots, setSlots] = useState([]);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -42,6 +44,12 @@ export default function EquipmentDetails() {
         setNotFound(true);
       } else {
         setEq(data);
+        try {
+          setSlots(await fetchSlots(supabase, id));
+        } catch (slotErr) {
+          console.error("load availability slots:", slotErr);
+          setSlots(null);
+        }
       }
       setLoading(false);
     })();
@@ -74,21 +82,21 @@ export default function EquipmentDetails() {
       return;
     }
 
-    const { data: conflicts, error: conflictErr } = await supabase
-      .from("bookings")
-      .select("id, start_date, end_date, status")
-      .eq("equipment_id", id)
-      .in("status", ["Confirmed", "In Use"]);
-    if (conflictErr) {
+    // Phase 6 item 5: slot lookup replaces the old ad-hoc bookings overlap
+    // query. Slots are re-fetched here so the decision uses fresh data.
+    let freshSlots;
+    try {
+      freshSlots = await fetchSlots(supabase, id);
+    } catch {
       setBookError(t("equipmentDetails.availabilityCheckFailed"));
       setBooking(false);
       return;
     }
-    const overlap = (conflicts || []).some(
-      (b) => datesOverlap(b.start_date, b.end_date, startDate, endDate)
-    );
-    if (overlap) {
-      setBookError(t("equipmentDetails.datesBooked"));
+    const verdict = checkAvailability(freshSlots, startDate, endDate);
+    if (!verdict.ok) {
+      setBookError(
+        t(verdict.reason === "outside-offered" ? "equipmentDetails.outsideOffered" : "equipmentDetails.datesBooked")
+      );
       setBooking(false);
       return;
     }
@@ -207,8 +215,27 @@ export default function EquipmentDetails() {
 
             <div className="mt-5 flex items-baseline gap-1 border-y border-line py-5">
               <span className="font-display text-3xl font-bold text-accent">₹{eq.price}</span>
-              <span className="text-mut">/ {eq.price_unit}</span>
+              <span className="text-mut">/ {priceUnitLabel(eq.price_unit, t)}</span>
             </div>
+
+            {eq.is_available && slots !== null && (
+              <div className="mt-4">
+                {(slots.filter((s) => !s.is_booked).length > 0) ? (
+                  <>
+                    <p className="mb-2 text-xs uppercase tracking-wide text-mut2">{t("equipmentDetails.availableWindows")}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {slots.filter((s) => !s.is_booked).map((s) => (
+                        <span key={s.id} className="rounded-full border border-line bg-cream px-3 py-1 text-xs font-medium text-ink">
+                          {formatSlotRange(s.start_date, s.end_date)}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-sm text-mut2">{t("equipmentDetails.alwaysAvailable")}</p>
+                )}
+              </div>
+            )}
 
             {isOwnListing ? (
               <p className="mt-6 rounded-xl border border-line bg-card px-4 py-3 text-center text-sm text-mut">

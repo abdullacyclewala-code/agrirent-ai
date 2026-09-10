@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Sparkles, Tractor, Radar, MapPin, ClipboardList } from "lucide-react";
 import HeroMap from "../components/ui/HeroMap.jsx";
+import InstallBanner from "../components/ui/InstallBanner.jsx";
 import { Reveal, SectionLabel, StatTile } from "../components/ui/Primitives.jsx";
+import { bookingStatusLabel } from "../lib/equipmentDisplay.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../lib/supabase.js";
 
@@ -41,7 +43,7 @@ export default function Dashboard() {
         setStats({
           equipment: eqRes.count ?? "—",
           bookings: user ? active : "—",
-          latest: rows[0]?.status || "—",
+          latest: bookingStatusLabel(rows[0]?.status, t),
         });
       } catch {
         /* keep fallbacks — stats must never break the dashboard */
@@ -72,6 +74,7 @@ export default function Dashboard() {
   return (
     <main className="grain">
       <div className="mx-auto max-w-7xl px-5 pt-6 md:px-8 md:pt-8">
+        <InstallBanner />
         {/* ---------------- PAGE HEADER ---------------- */}
         <div className="flex items-center justify-between gap-3 border-b border-line pb-4">
           <h2 className="font-display text-2xl font-semibold text-ink">{t("dashboard.overview")}</h2>

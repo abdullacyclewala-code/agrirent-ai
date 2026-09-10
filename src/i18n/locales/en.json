@@ -130,7 +130,12 @@
     "owner": "Owner: {{name}}",
     "distanceAway": "{{d}} away",
     "sortDistance": "Nearest first",
-    "withinRadius": "within {{km}} km"
+    "withinRadius": "within {{km}} km",
+    "reasonSuited": "Suited for {{op}}",
+    "reasonCrop": "Used for {{crop}} before",
+    "reasonHpFit": "{{hp}} HP fits your {{acres}} acre job",
+    "reasonHpOut": "{{hp}} HP — outside the typical range",
+    "reasonPrice": "₹{{price}} / {{unit}}"
   },
   "equipmentDetails": {
     "specifications": "Specifications",
@@ -157,7 +162,10 @@
     "noLongerAvailable": "This equipment is no longer available.",
     "datesBooked": "Those dates are already booked. Pick different dates.",
     "availabilityCheckFailed": "Couldn't check availability. Try again.",
-    "bookingCreateFailed": "Couldn't create the booking. Try again."
+    "bookingCreateFailed": "Couldn't create the booking. Try again.",
+    "availableWindows": "Available windows",
+    "alwaysAvailable": "Available for any dates — just pick yours.",
+    "outsideOffered": "Those dates fall outside the owner's availability windows."
   },
   "addEquipment": {
     "editTitle": "Edit listing",
@@ -217,7 +225,22 @@
     "locationErrorInvalid": "Those coordinates look invalid — latitude −90…90, longitude −180…180.",
     "latLabel": "Latitude",
     "lngLabel": "Longitude",
-    "setCoordinates": "Set"
+    "setCoordinates": "Set",
+    "slotsTitle": "Availability",
+    "slotsSub": "Add the date windows this equipment can be hired. Leave empty to accept requests for any dates.",
+    "slotStart": "Start",
+    "slotEnd": "End",
+    "slotAdd": "Add window",
+    "slotNone": "No windows yet — requests for any dates are accepted.",
+    "slotOffered": "Available",
+    "slotBooked": "Booked",
+    "slotRemove": "Remove",
+    "slotNeedBoth": "Pick both a start and an end date.",
+    "slotEndBeforeStart": "End date cannot be before the start date.",
+    "slotPast": "Availability windows cannot start in the past.",
+    "slotLoadError": "Could not load availability.",
+    "slotSaveError": "Could not save this window.",
+    "slotRemoveError": "Could not remove this window."
   },
   "booking": {
     "bookingNumber": "Booking #{{id}}",
@@ -250,7 +273,18 @@
     "priceLabel": "Price",
     "verifyFailed": "Couldn't verify availability. Try again.",
     "alreadyConfirmed": "These dates were already confirmed for another booking on this equipment.",
-    "updateFailed": "Couldn't update the booking."
+    "updateFailed": "Couldn't update the booking.",
+    "statusRequested": "Requested",
+    "statusConfirmed": "Confirmed",
+    "statusInUse": "In Use",
+    "statusCompleted": "Completed",
+    "statusRejected": "Rejected",
+    "statusCancelled": "Cancelled",
+    "statusExpired": "Expired",
+    "statusConflicted": "Conflicted",
+    "confirmOutsideOffered": "Cannot confirm — those dates fall outside the equipment's availability windows.",
+    "confirmSlotError": "Could not lock the dates — the request was left unconfirmed.",
+    "slotReleaseFailed": "Booking cancelled, but its dates may still show as booked. If the lock persists, ask the owner to remove it."
   },
   "myBookings": {
     "title": "Your bookings",
@@ -296,5 +330,21 @@
     "hi": "हिन्दी",
     "mr": "मराठी",
     "switchLabel": "Language"
+  },
+  "push": {
+    "pushSignInFirst": "Sign in first to enable notifications.",
+    "pushNotConfigured": "Push notifications aren't configured for this deployment yet.",
+    "pushUnsupported": "This browser doesn't support push notifications.",
+    "pushDenied": "Notification permission was not granted.",
+    "pushOn": "Notifications are on.",
+    "pushFailed": "Couldn't enable notifications — please try again.",
+    "pushTokenFailed": "Couldn't get a notification token. Try again.",
+    "pushSaveFailed": "Couldn't save your notification token."
+  },
+  "pwa": {
+    "installTitle": "Install AgriRent",
+    "installBody": "Add it to your home screen for one-tap access, even on slow networks.",
+    "install": "Install",
+    "dismiss": "Dismiss"
   }
 }

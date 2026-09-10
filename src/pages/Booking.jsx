@@ -6,9 +6,10 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
-import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { equipmentTypeLabel, priceUnitLabel } from "../lib/equipmentDisplay.js";
 import { subscribeToBooking } from "../lib/realtime.js";
-import { datesOverlap, expireStaleRequests, conflictOutOverlappingRequests } from "../lib/bookingLifecycle.js";
+import { expireStaleRequests, conflictOutOverlappingRequests } from "../lib/bookingLifecycle.js";
+import { fetchSlots, checkAvailability, createBookedSlot, removeBookedSlot } from "../lib/availability.js";
 
 // Matches the `status` values used in supabase/schema.sql `bookings` table.
 const TERMINAL_NEGATIVE = ["Rejected", "Cancelled", "Expired", "Conflicted"];
@@ -93,27 +94,28 @@ export default function Booking() {
   const setStatus = async (status) => {
     setBusy(true);
     setActionError(null);
+    const prevStatus = booking.status;
 
     // §4.5 double-booking conflict: re-check right before locking in an
     // Accept, not just at original booking-creation time — another request
     // for these same dates could have been confirmed since this page loaded.
+    // Phase 6 item 5: this check is a slot-calendar lookup now, and it also
+    // enforces the owner's offered windows (they may have changed since the
+    // request was created).
     if (status === "Confirmed") {
-      const { data: conflicts, error: conflictErr } = await supabase
-        .from("bookings")
-        .select("id, start_date, end_date")
-        .eq("equipment_id", booking.equipment_id)
-        .in("status", ["Confirmed", "In Use"])
-        .neq("id", booking.id);
-      if (conflictErr) {
+      let freshSlots;
+      try {
+        freshSlots = await fetchSlots(supabase, booking.equipment_id);
+      } catch {
         setActionError(t("booking.verifyFailed"));
         setBusy(false);
         return;
       }
-      const hasConflict = (conflicts || []).some((b) =>
-        datesOverlap(b.start_date, b.end_date, booking.start_date, booking.end_date)
-      );
-      if (hasConflict) {
-        setActionError(t("booking.alreadyConfirmed"));
+      const verdict = checkAvailability(freshSlots, booking.start_date, booking.end_date);
+      if (!verdict.ok) {
+        setActionError(
+          t(verdict.reason === "outside-offered" ? "booking.confirmOutsideOffered" : "booking.alreadyConfirmed")
+        );
         setBusy(false);
         return;
       }
@@ -126,12 +128,45 @@ export default function Booking() {
       return;
     }
 
-    // §4.5: accepting one request auto-resolves any other still-pending
-    // requests that overlap the same equipment/dates — see
-    // conflictOutOverlappingRequests()'s docstring for why "Conflicted"
-    // rather than silently leaving them as "Requested".
+    // Phase 6 item 5: a Confirmed booking locks its dates in the slot
+    // calendar. The lock is load-bearing for every later availability check,
+    // so if writing it fails the confirmation is rolled back to Requested.
     if (status === "Confirmed") {
+      try {
+        await createBookedSlot(supabase, booking.equipment_id, booking.start_date, booking.end_date);
+      } catch (slotErr) {
+        console.error("confirm: date lock failed, rolling back:", slotErr);
+        await supabase.from("bookings").update({ status: "Requested" }).eq("id", id);
+        setActionError(t("booking.confirmSlotError"));
+        setBusy(false);
+        load();
+        return;
+      }
+      // §4.5: accepting one request auto-resolves any other still-pending
+      // requests that overlap the same equipment/dates — see
+      // conflictOutOverlappingRequests()'s docstring for why "Conflicted"
+      // rather than silently leaving them as "Requested".
       await conflictOutOverlappingRequests(booking);
+    }
+
+    // Phase 6 item 5: releasing date locks. Only a Confirmed booking holds a
+    // lock (Requested never does), so Cancelled releases only from Confirmed.
+    if (status === "Cancelled" && prevStatus === "Confirmed") {
+      const { error: releaseErr } = await removeBookedSlot(
+        supabase, booking.equipment_id, booking.start_date, booking.end_date
+      );
+      if (releaseErr) {
+        console.error("cancel: date lock release failed:", releaseErr);
+        setActionError(t("booking.slotReleaseFailed"));
+      }
+    }
+    // A completed job's lock covers past dates — harmless if it stays, but
+    // releasing keeps the calendar clean. Silent best-effort either way.
+    if (status === "Completed" && (prevStatus === "Confirmed" || prevStatus === "In Use")) {
+      const { error: releaseErr } = await removeBookedSlot(
+        supabase, booking.equipment_id, booking.start_date, booking.end_date
+      );
+      if (releaseErr) console.error("complete: date lock release failed:", releaseErr);
     }
 
     setBusy(false);
@@ -283,7 +318,7 @@ export default function Booking() {
               </div>
               <div className="flex justify-between border-t border-line pt-2 font-semibold text-ink">
                 <span>{t("booking.priceLabel")}</span>
-                <span className="font-mono text-accent">₹{booking.price}<span className="text-xs text-mut2">/{eq?.price_unit}</span></span>
+                <span className="font-mono text-accent">₹{booking.price}<span className="text-xs text-mut2">/{priceUnitLabel(eq?.price_unit, t)}</span></span>
               </div>
             </div>
           </Reveal>

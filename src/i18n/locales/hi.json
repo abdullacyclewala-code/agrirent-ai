@@ -130,7 +130,12 @@
     "owner": "मालिक: {{name}}",
     "distanceAway": "{{d}} दूर",
     "sortDistance": "सबसे नज़दीकी पहले",
-    "withinRadius": "{{km}} किमी के अंदर"
+    "withinRadius": "{{km}} किमी के अंदर",
+    "reasonSuited": "{{op}} के लिए उपयुक्त",
+    "reasonCrop": "{{crop}} के लिए पहले इस्तेमाल हुआ",
+    "reasonHpFit": "{{hp}} HP आपकी {{acres}} एकड़ ज़मीन के लिए ठीक है",
+    "reasonHpOut": "{{hp}} HP — सामान्य सीमा से बाहर",
+    "reasonPrice": "₹{{price}} / {{unit}}"
   },
   "equipmentDetails": {
     "specifications": "विवरण",
@@ -157,7 +162,10 @@
     "noLongerAvailable": "यह उपकरण अब उपलब्ध नहीं है।",
     "datesBooked": "ये तारीखें पहले से बुक हैं। कोई और तारीख चुनें।",
     "availabilityCheckFailed": "उपलब्धता जांच नहीं पाए। फिर से कोशिश करें।",
-    "bookingCreateFailed": "बुकिंग नहीं बन पाई। फिर से कोशिश करें।"
+    "bookingCreateFailed": "बुकिंग नहीं बन पाई। फिर से कोशिश करें।",
+    "availableWindows": "उपलब्ध अवधि",
+    "alwaysAvailable": "किसी भी तारीख़ के लिए उपलब्ध — बस अपनी चुनें।",
+    "outsideOffered": "ये तारीख़ें मालिक की उपलब्ध अवधि से बाहर हैं।"
   },
   "addEquipment": {
     "editTitle": "सूची संपादित करें",
@@ -217,7 +225,22 @@
     "locationErrorInvalid": "निर्देशांक गलत लग रहे हैं — अक्षांश −90…90, देशांतर −180…180।",
     "latLabel": "अक्षांश",
     "lngLabel": "देशांतर",
-    "setCoordinates": "लगाएं"
+    "setCoordinates": "लगाएं",
+    "slotsTitle": "उपलब्धता",
+    "slotsSub": "यह उपकरण किन तारीख़ों में किराए पर मिलेगा, वह अवधि जोड़ें। खाली छोड़ें तो किसी भी तारीख़ के अनुरोध स्वीकार होंगे।",
+    "slotStart": "शुरुआत",
+    "slotEnd": "समाप्ति",
+    "slotAdd": "अवधि जोड़ें",
+    "slotNone": "अभी कोई अवधि नहीं — किसी भी तारीख़ के अनुरोध स्वीकार होंगे।",
+    "slotOffered": "उपलब्ध",
+    "slotBooked": "बुक",
+    "slotRemove": "हटाएं",
+    "slotNeedBoth": "शुरुआत और समाप्ति दोनों तारीख़ चुनें।",
+    "slotEndBeforeStart": "समाप्ति तारीख़ शुरुआत से पहले नहीं हो सकती।",
+    "slotPast": "उपलब्धता अवधि अतीत से शुरू नहीं हो सकती।",
+    "slotLoadError": "उपलब्धता लोड नहीं हो सकी।",
+    "slotSaveError": "यह अवधि सहेजी नहीं जा सकी।",
+    "slotRemoveError": "यह अवधि हटाई नहीं जा सकी।"
   },
   "booking": {
     "bookingNumber": "बुकिंग #{{id}}",
@@ -250,7 +273,18 @@
     "priceLabel": "कीमत",
     "verifyFailed": "उपलब्धता जांची नहीं जा सकी। फिर से कोशिश करें।",
     "alreadyConfirmed": "इन तारीखों की पुष्टि इस उपकरण की किसी और बुकिंग के लिए पहले ही हो चुकी है।",
-    "updateFailed": "बुकिंग अपडेट नहीं हो पाई।"
+    "updateFailed": "बुकिंग अपडेट नहीं हो पाई।",
+    "statusRequested": "अनुरोध भेजा",
+    "statusConfirmed": "पुष्ट",
+    "statusInUse": "उपयोग में",
+    "statusCompleted": "पूर्ण",
+    "statusRejected": "अस्वीकृत",
+    "statusCancelled": "रद्द",
+    "statusExpired": "समाप्त",
+    "statusConflicted": "टकराव",
+    "confirmOutsideOffered": "पुष्टि नहीं हो सकती — ये तारीख़ें उपकरण की उपलब्ध अवधि से बाहर हैं।",
+    "confirmSlotError": "तारीख़ें लॉक नहीं हो सकीं — अनुरोध अपुष्ट ही रहा।",
+    "slotReleaseFailed": "बुकिंग रद्द हो गई, लेकिन तारीख़ें अब भी बुक दिख सकती हैं। लॉक बना रहे तो मालिक से हटाने को कहें।"
   },
   "myBookings": {
     "title": "आपकी बुकिंग",
@@ -296,5 +330,21 @@
     "hi": "हिन्दी",
     "mr": "मराठी",
     "switchLabel": "भाषा"
+  },
+  "push": {
+    "pushSignInFirst": "सूचनाएं चालू करने के लिए पहले साइन इन करें।",
+    "pushNotConfigured": "इस ऐप के लिए पुश सूचनाएं अभी सेट नहीं हैं।",
+    "pushUnsupported": "यह ब्राउज़र पुश सूचनाओं को समर्थन नहीं देता।",
+    "pushDenied": "सूचना की अनुमति नहीं मिली।",
+    "pushOn": "सूचनाएं चालू हैं।",
+    "pushFailed": "सूचनाएं चालू नहीं हो सकीं — फिर कोशिश करें।",
+    "pushTokenFailed": "सूचना टोकन नहीं मिल सका। फिर कोशिश करें।",
+    "pushSaveFailed": "आपका सूचना टोकन सहेजा नहीं जा सका।"
+  },
+  "pwa": {
+    "installTitle": "AgriRent इंस्टॉल करें",
+    "installBody": "एक-टैप पहुंच के लिए होम स्क्रीन पर जोड़ें — धीमे नेटवर्क पर भी।",
+    "install": "इंस्टॉल",
+    "dismiss": "हटाएं"
   }
 }

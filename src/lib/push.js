@@ -19,42 +19,44 @@ const VAPID_KEY = import.meta.env.VITE_FIREBASE_VAPID_KEY;
  *
  * @returns {Promise<{ok: boolean, message: string}>}
  */
-export async function enablePushNotifications(userId) {
-  if (!userId) return { ok: false, message: "Sign in first to enable notifications." };
+export async function enablePushNotifications(userId, opts = {}) {
+  const t = opts.t;
+  const msg = (key, fallback) => (t ? t(key) : fallback);
+  if (!userId) return { ok: false, message: msg("push.pushSignInFirst", "Sign in first to enable notifications.") };
   if (!VAPID_KEY) {
     return {
       ok: false,
-      message: "Push notifications aren't configured for this deployment yet.",
+      message: msg("push.pushNotConfigured", "Push notifications aren't configured for this deployment yet."),
     };
   }
 
   const messaging = await getMessagingIfSupported();
   if (!messaging) {
-    return { ok: false, message: "This browser doesn't support push notifications." };
+    return { ok: false, message: msg("push.pushUnsupported", "This browser doesn't support push notifications.") };
   }
 
   const permission = await Notification.requestPermission();
   if (permission !== "granted") {
-    return { ok: false, message: "Notification permission was not granted." };
+    return { ok: false, message: msg("push.pushDenied", "Notification permission was not granted.") };
   }
 
   try {
     const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
     const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
     if (!token) {
-      return { ok: false, message: "Couldn't get a notification token. Try again." };
+      return { ok: false, message: msg("push.pushTokenFailed", "Couldn't get a notification token. Try again.") };
     }
 
     const { error } = await supabase
       .from("push_tokens")
       .upsert({ user_id: userId, token, platform: "web" }, { onConflict: "token" });
     if (error) {
-      return { ok: false, message: error.message || "Couldn't save your notification token." };
+      return { ok: false, message: error.message || msg("push.pushSaveFailed", "Couldn't save your notification token.") };
     }
 
-    return { ok: true, message: "Notifications are on." };
+    return { ok: true, message: msg("push.pushOn", "Notifications are on.") };
   } catch (err) {
-    return { ok: false, message: err.message || "Couldn't enable notifications." };
+    return { ok: false, message: err.message || msg("push.pushFailed", "Couldn't enable notifications.") };
   }
 }
 

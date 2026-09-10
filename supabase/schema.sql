@@ -119,8 +119,34 @@ create table if not exists public.availability_slots (
 alter table public.availability_slots enable row level security;
 create policy "Slots readable by everyone" on public.availability_slots for select using (true);
 create policy "Owner manages own slots" on public.availability_slots
-  for all using (
+  for all
+  using (
     exists (select 1 from public.equipment e where e.id = equipment_id and e.owner_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.equipment e where e.id = equipment_id and e.owner_id = auth.uid())
+  );
+
+-- Phase 6 item 5: a farmer cancelling their own Confirmed booking releases its
+-- date lock (mirrors migration 20260911).
+create policy "Farmer releases own cancelled locks" on public.availability_slots
+  for delete using (
+    is_booked = true
+    and exists (
+      select 1 from public.bookings b
+      where b.equipment_id = availability_slots.equipment_id
+        and b.start_date = availability_slots.start_date
+        and b.end_date = availability_slots.end_date
+        and b.farmer_id = auth.uid()
+        and b.status = 'Cancelled'
+        and not exists (
+          select 1 from public.bookings b2
+          where b2.equipment_id = b.equipment_id
+            and b2.status in ('Confirmed', 'In Use')
+            and b2.start_date <= b.end_date
+            and b2.end_date >= b.start_date
+        )
+    )
   );
 
 -- ============ REQUIREMENTS ============
@@ -166,6 +192,29 @@ create index if not exists idx_bookings_farmer on public.bookings(farmer_id);
 create index if not exists idx_bookings_owner on public.bookings(owner_id);
 create index if not exists idx_bookings_equipment on public.bookings(equipment_id);
 create index if not exists idx_slots_equipment on public.availability_slots(equipment_id);
+
+-- Phase 6 item 5: range sanity + fast overlap lookups + backfill of the live
+-- bookings that pre-date the slots table (mirrors migration 20260911).
+alter table public.availability_slots
+  add constraint availability_slots_valid_range
+  check (start_date is not null and end_date is not null and start_date <= end_date);
+
+create index if not exists idx_slots_equipment_dates
+  on public.availability_slots (equipment_id, start_date, end_date);
+
+insert into public.availability_slots (equipment_id, start_date, end_date, is_booked)
+select b.equipment_id, b.start_date, b.end_date, true
+from public.bookings b
+where b.status in ('Confirmed', 'In Use')
+  and b.start_date is not null
+  and b.end_date is not null
+  and not exists (
+    select 1 from public.availability_slots s
+    where s.equipment_id = b.equipment_id
+      and s.start_date = b.start_date
+      and s.end_date = b.end_date
+      and s.is_booked = true
+  );
 
 -- ============ PHASE 4 ============
 

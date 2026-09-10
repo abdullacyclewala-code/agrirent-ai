@@ -8,6 +8,8 @@ import { Button } from "../components/ui/Primitives.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { runRulesFilter } from "../lib/rulesFilter.js";
+import { cropLabel, operationLabel, operationDesc, priceUnitLabel } from "../lib/equipmentDisplay.js";
+import { fetchSlotsForMany, dateStatusOn } from "../lib/availability.js";
 import { parseRequirementFreeText } from "../lib/llmClient.js";
 import { rankCandidates } from "../lib/rankClient.js";
 import {
@@ -197,8 +199,8 @@ export default function DescribeJob() {
     localStorage.setItem("agrirent_job", JSON.stringify(form));
     setScanning(true);
 
-    const cropLabel = crops.find((c) => c.id === form.crop)?.label || form.crop;
-    const opLabel = operations.find((o) => o.id === form.operation)?.label || form.operation;
+    const cropLabelEn = crops.find((c) => c.id === form.crop)?.label || form.crop;
+    const opLabelEn = operations.find((o) => o.id === form.operation)?.label || form.operation;
     const parsed_json = {
       crop: form.crop,
       area_acres: form.land,
@@ -208,7 +210,7 @@ export default function DescribeJob() {
     // raw_text (more useful for future retraining / review) — otherwise synthesize it.
     const raw_text = (
       freeText.trim() ||
-      `${opLabel} for ${form.land} acres of ${cropLabel} near ${form.location}, needed ${form.date}. ${form.notes || ""}`
+      `${opLabelEn} for ${form.land} acres of ${cropLabelEn} near ${form.location}, needed ${form.date}. ${form.notes || ""}`
     ).trim();
 
     try {
@@ -275,32 +277,43 @@ export default function DescribeJob() {
 
       const { results, relaxedHp } = runRulesFilter(normalized, parsed_json, user?.id, {
         distanceReason: (km) => t("recommendations.distanceAway", { d: formatDistance(km) }),
+        suitedFor: (op) => t("recommendations.reasonSuited", { op: operationLabel(op) }),
+        usedForCrop: (crop) => t("recommendations.reasonCrop", { crop: cropLabel(crop) }),
+        hpFit: (hp, acres) => t("recommendations.reasonHpFit", { hp, acres }),
+        hpOutside: (hp) => t("recommendations.reasonHpOut", { hp }),
+        priceLine: (price, unit) =>
+          t("recommendations.reasonPrice", { price, unit: priceUnitLabel(unit, t) }),
       });
 
       // Phase 4 §6.4 "availability match quality" feature — check which of
-      // the filtered candidates already have a Confirmed/In Use booking that
-      // covers the farmer's requested date, so the ranker can prefer
-      // equipment that's actually free that day. Same overlap logic as the
-      // booking-confirm re-check in EquipmentDetails.jsx, just read-only and
-      // scoped to "does this exact date fall inside an existing booking".
+      // the filtered candidates are busy on the farmer's requested date, so
+      // the ranker can prefer equipment that's actually free that day. Phase 6
+      // item 5: this reads the slot calendar (one query for all candidates).
+      // "Busy" means a booking lock covers the date OR the date falls outside
+      // the owner's offered windows. Fail-open: if the lookup fails, every
+      // candidate keeps quality 1.0 and the detail page still enforces slots.
       let candidatesForRanking = results;
       if (form.date && results.length) {
-        const equipmentIds = results.map((r) => r.id);
-        const { data: existingBookings } = await supabase
-          .from("bookings")
-          .select("equipment_id, start_date, end_date")
-          .in("equipment_id", equipmentIds)
-          .in("status", ["Confirmed", "In Use"]);
-
-        const busyIds = new Set(
-          (existingBookings || [])
-            .filter((b) => b.start_date <= form.date && b.end_date >= form.date)
-            .map((b) => b.equipment_id)
-        );
-        candidatesForRanking = results.map((r) => ({
-          ...r,
-          availability_quality: busyIds.has(r.id) ? 0.3 : 1.0,
-        }));
+        try {
+          const slotsByEq = await fetchSlotsForMany(
+            supabase,
+            results.map((r) => r.id)
+          );
+          const busyIds = new Set(
+            results
+              .filter((r) => {
+                const status = dateStatusOn(slotsByEq.get(r.id), form.date);
+                return status === "booked" || status === "unoffered";
+              })
+              .map((r) => r.id)
+          );
+          candidatesForRanking = results.map((r) => ({
+            ...r,
+            availability_quality: busyIds.has(r.id) ? 0.3 : 1.0,
+          }));
+        } catch (slotErr) {
+          console.error("availability_quality slot lookup failed:", slotErr);
+        }
       }
 
       // Phase 4 §6.4/§6.5 — replace the Phase 2 heuristic score with the real
@@ -440,7 +453,7 @@ export default function DescribeJob() {
                   }`}
                 >
                   <span className="text-3xl">{c.icon}</span>
-                  <span className="text-sm font-medium text-ink">{c.label}</span>
+                  <span className="text-sm font-medium text-ink">{cropLabel(c.id)}</span>
                 </button>
               ))}
             </div>
@@ -461,8 +474,8 @@ export default function DescribeJob() {
                   }`}
                 >
                   <div>
-                    <div className="font-medium text-ink">{op.label}</div>
-                    <div className="mt-0.5 text-xs text-mut">{op.desc}</div>
+                    <div className="font-medium text-ink">{operationLabel(op.id)}</div>
+                    <div className="mt-0.5 text-xs text-mut">{operationDesc(op.id)}</div>
                   </div>
                   {form.operation === op.id && (
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-accent text-white">
@@ -583,8 +596,8 @@ export default function DescribeJob() {
             )}
             <div className="divide-y divide-line rounded-2xl border border-line bg-card">
               {[
-                [t("describeJob.reviewCrop"), crops.find((c) => c.id === form.crop)?.label],
-                [t("describeJob.reviewOperation"), operations.find((o) => o.id === form.operation)?.label],
+                [t("describeJob.reviewCrop"), cropLabel(form.crop)],
+                [t("describeJob.reviewOperation"), operationLabel(form.operation)],
                 [t("describeJob.reviewLand"), `${form.land} ${t("describeJob.acres")}`],
                 [t("describeJob.reviewLocation"), form.location || "—"],
                 [t("describeJob.reviewDate"), form.date || "—"],

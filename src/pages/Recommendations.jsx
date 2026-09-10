@@ -3,10 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { MapPin, SlidersHorizontal, Pencil, ChevronDown, Star, Info } from "lucide-react";
-import taxonomy from "../data/taxonomy.json";
 import { Button, MatchRing, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
-import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { equipmentTypeLabel, cropLabel, operationLabel, priceUnitLabel } from "../lib/equipmentDisplay.js";
 import { formatDistance } from "../lib/geo.js";
 
 export default function Recommendations() {
@@ -35,8 +34,8 @@ export default function Recommendations() {
     setRankedBy(parsed.rankedBy || "heuristic");
   }, [navigate]);
 
-  const cropLabel = taxonomy.crops.find((c) => c.id === job?.crop)?.label || job?.crop;
-  const opLabel = taxonomy.operations.find((o) => o.id === job?.operation)?.label || job?.operation;
+  const recapCrop = cropLabel(job?.crop);
+  const recapOp = operationLabel(job?.operation);
 
   const hasDistances = (results || []).some((r) => r.distance_km != null);
   const sorted = [...(results || [])].sort((a, b) => {
@@ -62,7 +61,7 @@ export default function Recommendations() {
       {/* recap */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-line bg-card px-5 py-4">
         <div className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
-          <span className="font-display font-semibold text-ink">{cropLabel} · {opLabel}</span>
+          <span className="font-display font-semibold text-ink">{recapCrop} · {recapOp}</span>
           <span className="text-mut2">·</span>
           <span>{job?.land} {t("describeJob.acres")}</span>
           <span className="text-mut2">·</span>
@@ -172,7 +171,7 @@ export default function Recommendations() {
                           {t("recommendations.distanceAway", { d: formatDistance(top.distance_km) })}
                         </span>
                       )}
-                      <span className="ml-auto font-mono text-lg text-accent">₹{top.price}<span className="text-sm text-mut2">/{top.price_unit}</span></span>
+                      <span className="ml-auto font-mono text-lg text-accent">₹{top.price}<span className="text-sm text-mut2">/{priceUnitLabel(top.price_unit, t)}</span></span>
                     </div>
                   </div>
                 </Link>
@@ -194,7 +193,7 @@ export default function Recommendations() {
                       <div className="min-w-0 flex-1">
                         <h4 className="truncate font-display text-sm font-semibold text-ink sm:text-base">{eq.name}</h4>
                         <p className="mt-0.5 truncate text-xs text-mut">
-                          {equipmentTypeLabel(eq.equipment_type)} · ₹{eq.price}/{eq.price_unit}
+                          {equipmentTypeLabel(eq.equipment_type)} · ₹{eq.price}/{priceUnitLabel(eq.price_unit, t)}
                           {eq.distance_km != null && ` · ${formatDistance(eq.distance_km)}`}
                         </p>
                       </div>

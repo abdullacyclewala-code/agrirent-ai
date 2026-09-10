@@ -6,7 +6,9 @@ import taxonomy from "../data/taxonomy.json";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Chip } from "../components/ui/Primitives.jsx";
+import { equipmentTypeLabel, operationLabel, cropLabel } from "../lib/equipmentDisplay.js";
 import PhotoPicker from "../components/ui/PhotoPicker.jsx";
+import AvailabilityManager from "../components/ui/AvailabilityManager.jsx";
 import {
   uploadEquipmentPhoto,
   deleteEquipmentPhoto,
@@ -239,7 +241,7 @@ export default function AddEquipment() {
           <div className="flex flex-wrap gap-2">
             {taxonomy.equipment_types.map((t2) => (
               <Chip key={t2.id} active={form.equipment_type === t2.id} onClick={() => set("equipment_type", t2.id)}>
-                {t2.label}
+                {equipmentTypeLabel(t2.id)}
               </Chip>
             ))}
           </div>
@@ -249,6 +251,12 @@ export default function AddEquipment() {
           <PhotoPicker photos={photos} onChange={handlePhotosChange} disabled={saving} />
         </Field>
 
+        {isEdit && (
+          <Field label={t("addEquipment.slotsTitle")} hint={t("addEquipment.slotsSub")}>
+            <AvailabilityManager equipmentId={id} />
+          </Field>
+        )}
+
         <Field label={t("addEquipment.operationsLabel")} hint={t("addEquipment.operationsHint")}>
           <div className="flex flex-wrap gap-2">
             {taxonomy.operations.map((o) => (
@@ -257,7 +265,7 @@ export default function AddEquipment() {
                 active={form.compatible_operations.includes(o.id)}
                 onClick={() => toggleInArray("compatible_operations", o.id)}
               >
-                {o.label}
+                {operationLabel(o.id)}
               </Chip>
             ))}
           </div>
@@ -272,7 +280,7 @@ export default function AddEquipment() {
                 onClick={() => toggleInArray("compatible_crops", c.id)}
                 icon={c.icon}
               >
-                {c.label}
+                {cropLabel(c.id)}
               </Chip>
             ))}
           </div>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#FAF6EC" />
+  <title>AgriRent AI — Offline</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: #FAF6EC; color: #2A2118; padding: 24px;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    .card { text-align: center; max-width: 340px; }
+    .mark {
+      width: 64px; height: 64px; border-radius: 16px; background: #A8431F;
+      color: #FAF6EC; font-size: 36px; font-weight: 700; line-height: 64px; margin: 0 auto 20px;
+    }
+    h1 { font-size: 22px; margin-bottom: 8px; }
+    p { font-size: 15px; color: #6B5D4D; margin-bottom: 20px; }
+    button {
+      background: #A8431F; color: #fff; border: 0; border-radius: 999px;
+      padding: 12px 28px; font-size: 15px; font-weight: 600; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="mark">अ</div>
+    <h1 id="t">You're offline</h1>
+    <p id="s">Check your connection and try again — your installed AgriRent app will pick up where you left off.</p>
+    <button id="b" onclick="location.reload()">Try again</button>
+  </div>
+  <script>
+    try {
+      var lang = localStorage.getItem("agrirent_lang") || "en";
+      if (lang === "hi") {
+        document.getElementById("t").textContent = "आप ऑफ़लाइन हैं";
+        document.getElementById("s").textContent = "अपना कनेक्शन जांचें और फिर कोशिश करें — आपका इंस्टॉल किया AgriRent ऐप वहीं से शुरू होगा।";
+        document.getElementById("b").textContent = "फिर कोशिश करें";
+      } else if (lang === "mr") {
+        document.getElementById("t").textContent = "तुम्ही ऑफलाइन आहात";
+        document.getElementById("s").textContent = "तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा — तुमचे इंस्टॉल केलेले AgriRent ॲप तिथूनच सुरू होईल.";
+        document.getElementById("b").textContent = "पुन्हा प्रयत्न करा";
+      }
+    } catch (e) {}
+  </script>
+</body>
+</html>
