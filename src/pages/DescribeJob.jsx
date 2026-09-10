@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, ArrowRight, MapPin, Radar, Check, LocateFixed, Sparkles, Loader2, PenLine } from "lucide-react";
 import taxonomy from "../data/taxonomy.json";
-import { Button, Chip } from "../components/ui/Primitives.jsx";
+import { Button } from "../components/ui/Primitives.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { runRulesFilter } from "../lib/rulesFilter.js";
@@ -14,6 +14,7 @@ import {
   getBrowserLocation,
   isValidLatLng,
   formatDistance,
+  reverseGeocode,
   DEFAULT_SEARCH_RADIUS_KM,
   RADIUS_OPTIONS_KM,
 } from "../lib/geo.js";
@@ -70,6 +71,8 @@ export default function DescribeJob() {
   const [farmerCoords, setFarmerCoords] = useState(null); // { lat, lng } | null
   const [radiusKm, setRadiusKm] = useState(DEFAULT_SEARCH_RADIUS_KM);
   const [locating, setLocating] = useState(false);
+  const [resolvingPlace, setResolvingPlace] = useState(false);
+  const [osmPlace, setOsmPlace] = useState(false);
   const [geoError, setGeoError] = useState(null);
 
   // Reuse last search's coords (saved to the profile on submit) so the
@@ -100,6 +103,23 @@ export default function DescribeJob() {
     try {
       const { lat, lng } = await getBrowserLocation();
       setFarmerCoords({ lat, lng });
+      // Fill the location box immediately so it never looks stale, then
+      // upgrade the label to a real place name when the free lookup resolves.
+      // The upgrade only applies if the user hasn't typed something else
+      // meanwhile — never overwrite their own text.
+      const coordsLabel = t("describeJob.currentLocationAt", {
+        lat: lat.toFixed(4),
+        lng: lng.toFixed(4),
+      });
+      set("location", coordsLabel);
+      setOsmPlace(false);
+      setResolvingPlace(true);
+      const place = await reverseGeocode(lat, lng);
+      setResolvingPlace(false);
+      if (place) {
+        setOsmPlace(true);
+        setForm((f) => (f.location === coordsLabel ? { ...f, location: place } : f));
+      }
     } catch (err) {
       const code = err?.code || "unavailable";
       setGeoError(
@@ -111,6 +131,7 @@ export default function DescribeJob() {
       );
     } finally {
       setLocating(false);
+      setResolvingPlace(false);
     }
   };
 
@@ -524,14 +545,14 @@ export default function DescribeJob() {
                 </div>
               </div>
             )}
+            {resolvingPlace && (
+              <p className="mt-2 text-xs text-mut2">{t("describeJob.detectingPlace")}</p>
+            )}
+            {osmPlace && !resolvingPlace && (
+              <p className="mt-2 text-[11px] text-mut2">{t("describeJob.osmAttribution")}</p>
+            )}
             {geoError && <p className="mt-2 text-xs text-accent">{geoError}</p>}
-            <div className="mt-6 flex flex-wrap gap-2">
-              {["Ludhiana", "Khanna", "Doraha", "Sahnewal"].map((d) => (
-                <Chip key={d} active={form.location.includes(d)} onClick={() => set("location", `${d}, Punjab`)}>
-                  {d}
-                </Chip>
-              ))}
-            </div>
+
           </StepShell>
         )}
 

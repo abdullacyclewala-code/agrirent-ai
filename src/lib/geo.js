@@ -105,3 +105,49 @@ export function parseCoordinate(raw, min, max) {
   const v = Number(cleaned);
   return Number.isFinite(v) && v >= min && v <= max ? v : null;
 }
+
+/**
+ * Turn coords into a human place label ("Rurka, Ludhiana") using OpenStreetMap's
+ * free Nominatim service — no API key, CORS-enabled. Used to fill the location
+ * text box when the farmer taps "use current location".
+ *
+ * NEVER throws and NEVER blocks the flow: any failure (offline, rate limit,
+ * timeout, unexpected shape) resolves to null and the caller falls back to a
+ * "Current location (lat, lng)" label. Results power the visible box text, so
+ * OSM attribution is shown alongside (see describeJob.osmAttribution).
+ */
+export async function reverseGeocode(lat, lng, { timeoutMs = 8000 } = {}) {
+  if (!isValidLatLng(lat, lng)) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const url =
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2` +
+      `&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}` +
+      `&zoom=14&addressdetails=1&accept-language=en`;
+    const res = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return formatOsmAddress(data?.address) || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** "village, district" from a Nominatim address object — null if unusable. */
+export function formatOsmAddress(addr) {
+  if (!addr || typeof addr !== "object") return null;
+  const place =
+    addr.village || addr.hamlet || addr.town || addr.city || addr.suburb ||
+    addr.neighbourhood || addr.municipality || null;
+  const area =
+    addr.county || addr.state_district || addr.district || addr.state || null;
+  const bits = [place, area].filter(Boolean).filter((b, i, a) => a.indexOf(b) === i);
+  if (bits.length === 0) return null;
+  return bits.slice(0, 2).join(", ");
+}

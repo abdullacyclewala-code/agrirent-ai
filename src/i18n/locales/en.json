@@ -106,7 +106,10 @@
     "geoDenied": "Location permission denied — you can still search without it.",
     "geoTimeout": "Location timed out — you can still search without it.",
     "geoUnavailable": "Location unavailable — you can still search without it.",
-    "radiusLabel": "Search within"
+    "radiusLabel": "Search within",
+    "currentLocationAt": "Current location ({{lat}}, {{lng}})",
+    "detectingPlace": "Detecting place name…",
+    "osmAttribution": "Place names © OpenStreetMap contributors"
   },
   "recommendations": {
     "loadingMatches": "Loading matches…",

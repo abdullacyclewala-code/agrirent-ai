@@ -106,7 +106,10 @@
     "geoDenied": "स्थान की अनुमति नहीं मिली — फिर भी खोज सकते हैं।",
     "geoTimeout": "स्थान मिलने में देर हो गई — फिर भी खोज सकते हैं।",
     "geoUnavailable": "स्थान उपलब्ध नहीं है — फिर भी खोज सकते हैं।",
-    "radiusLabel": "इस दायरे में खोजें"
+    "radiusLabel": "इस दायरे में खोजें",
+    "currentLocationAt": "वर्तमान स्थान ({{lat}}, {{lng}})",
+    "detectingPlace": "स्थान का नाम पहचाना जा रहा है…",
+    "osmAttribution": "स्थान के नाम © OpenStreetMap योगदानकर्ता"
   },
   "recommendations": {
     "loadingMatches": "मिलान लोड हो रहे हैं…",
