@@ -5,8 +5,8 @@ import { MapPin, Calendar, Radio } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Reveal } from "../components/ui/Primitives.jsx";
-import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
-import { artCategoryFor, equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
+import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 import { subscribeToBooking } from "../lib/realtime.js";
 import { datesOverlap, expireStaleRequests, conflictOutOverlappingRequests } from "../lib/bookingLifecycle.js";
 
@@ -47,7 +47,7 @@ export default function Booking() {
   const load = useCallback(async () => {
     const { data, error } = await supabase
       .from("bookings")
-      .select("*, equipment:equipment_id ( name, equipment_type, price, price_unit, location_label ), owner:owner_id ( name ), farmer:farmer_id ( name )")
+      .select("*, equipment:equipment_id ( name, equipment_type, price, price_unit, location_label, images ), owner:owner_id ( name ), farmer:farmer_id ( name )")
       .eq("id", id)
       .single();
     if (error || !data) {
@@ -261,7 +261,7 @@ export default function Booking() {
           <Reveal className="rounded-3xl border border-line bg-card p-6">
             <div className="flex items-center gap-3">
               <div className="h-16 w-16 overflow-hidden rounded-xl">
-                <EquipmentArt category={artCategoryFor(eq?.equipment_type)} className="h-full w-full" />
+                <EquipmentPhoto images={eq?.images} equipmentType={eq?.equipment_type} alt="" className="h-full w-full" />
               </div>
               <div>
                 <div className="font-display text-base font-semibold text-ink">{eq?.name}</div>

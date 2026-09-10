@@ -40,10 +40,15 @@ FEATURE_NAMES = [
     "semantic_confidence",
 ]
 
-# Serve-time stand-in for the distance feature — see module docstring.
-# Kept as a named constant (rather than a bare literal) so it's easy to find
-# and replace once geocoding lands.
+# Serve-time fallback for the distance feature when the caller sends no
+# distance_km (geo wasn't part of the search) — see module docstring.
 _DISTANCE_PLACEHOLDER = 0.5
+
+# Normalization reference: distance_km / this, clamped to [0, 1].
+# 50 km matches the frontend's default search radius — anything at or beyond
+# it counts as fully "far", the same 0–1 scale the synthetic training data
+# uses (see train_ranker.py).
+_DISTANCE_REFERENCE_KM = 50.0
 
 # When an equipment_type has no hp_ranges data at all, don't reward or punish
 # HP fit — treat it as a neutral midpoint rather than 0 (which would look
@@ -95,9 +100,18 @@ def extract_features(requirement: dict, candidate: dict, compatibility_index: di
     if semantic_confidence is None:
         semantic_confidence = 1.0
 
+    raw_distance = candidate.get("distance_km")
+    if raw_distance is None:
+        distance = _DISTANCE_PLACEHOLDER
+    else:
+        try:
+            distance = min(max(float(raw_distance), 0.0) / _DISTANCE_REFERENCE_KM, 1.0)
+        except (TypeError, ValueError):
+            distance = _DISTANCE_PLACEHOLDER
+
     return {
         "hp_delta_ratio": float(hp_delta_ratio),
-        "distance": _DISTANCE_PLACEHOLDER,
+        "distance": float(distance),
         "price": float(candidate.get("price") or 0),
         "availability_quality": float(availability_quality),
         "equipment_rating": 0.0,

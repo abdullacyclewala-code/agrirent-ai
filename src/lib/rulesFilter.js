@@ -6,10 +6,13 @@
 // to order results within this phase. It is explicitly a placeholder and is
 // replaced by the real ranking model in Phase 4 per §6.4.
 //
-// Also NOT implemented yet (disclosed deviation from §6.3, deferred to a later
-// phase): geo distance / service_area_radius_km filtering. Mapbox/PostGIS
-// integration hasn't been wired up, so every equipment row currently passes
-// the location check. Once geocoding exists, plug real distance in here.
+// Phase 6 item 4 — geo is now wired up, but the HARD distance filter lives in
+// the `nearby_equipment` Postgres RPC (ST_DWithin on the search radius AND
+// service_area_radius_km), not here: the DB does it in one indexed query.
+// This filter only CONSUMES the resulting `row.distance_km` (null when the
+// farmer didn't share a location or the listing has no pinned coords): a
+// "3.2 km away" reason line plus a small proximity nudge to the heuristic
+// score. The LightGBM ranker gets the same value as its `distance` feature.
 
 import taxonomy from "../data/taxonomy.json";
 
@@ -45,9 +48,10 @@ function candidateEquipmentTypes({ operation, crop }) {
  * @param {Array} equipmentRows - rows from `equipment` table (+ owner name joined in as `owner_name`)
  * @param {{crop:string|null, operation:string, area_acres:number|null}} requirement
  * @param {string} currentUserId - excludes the user's own listings (§4.5 edge case)
+ * @param {{distanceReason?: (km:number)=>string}} opts - optional i18n reason formatter for distance
  * @returns {{results: Array, relaxedHp: boolean}}
  */
-export function runRulesFilter(equipmentRows, requirement, currentUserId) {
+export function runRulesFilter(equipmentRows, requirement, currentUserId, opts = {}) {
   const { crop, operation, area_acres } = requirement;
   const acres = area_acres || 1;
 
@@ -107,6 +111,16 @@ export function runRulesFilter(equipmentRows, requirement, currentUserId) {
       }
     }
     if (row.price) reasons.push(`₹${row.price} / ${row.price_unit}`);
+    // Gentle proximity nudge (heuristic path only — the ML ranker weighs
+    // distance itself via its `distance` feature). Unknown distance (null)
+    // neither helps nor hurts: no data, no opinion.
+    if (row.distance_km != null && Number.isFinite(Number(row.distance_km))) {
+      const km = Number(row.distance_km);
+      if (opts.distanceReason) reasons.push(opts.distanceReason(km));
+      if (km <= 5) score += 6;
+      else if (km <= 15) score += 3;
+      else if (km <= 30) score += 1;
+    }
 
     score = Math.max(35, Math.min(99, Math.round(score)));
 

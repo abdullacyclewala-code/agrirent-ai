@@ -125,9 +125,12 @@ class RankCandidateIn(BaseModel):
     price: Optional[float] = None
     is_available: Optional[bool] = True
     # Optional richer signals a caller can supply if it already knows them;
-    # both default sensibly (see app/ranking/features.py) if omitted.
+    # all default sensibly (see app/ranking/features.py) if omitted.
     availability_quality: Optional[float] = None
     semantic_confidence: Optional[float] = None
+    # Phase 6 item 4: real farmer→listing distance in km (PostGIS RPC).
+    # None when geo wasn't part of the search — treated as neutral (0.5).
+    distance_km: Optional[float] = None
 
 
 class RankRequestIn(BaseModel):

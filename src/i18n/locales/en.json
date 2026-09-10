@@ -100,7 +100,13 @@
     "scanningMsg2": "Scanning equipment within range…",
     "scanningMsg3": "Checking crop & operation fit…",
     "scanningMsg4": "Ranking by fit and price…",
-    "yourArea": "your area"
+    "yourArea": "your area",
+    "locating": "Locating…",
+    "geoCaptured": "Location captured — nearby matches first",
+    "geoDenied": "Location permission denied — you can still search without it.",
+    "geoTimeout": "Location timed out — you can still search without it.",
+    "geoUnavailable": "Location unavailable — you can still search without it.",
+    "radiusLabel": "Search within"
   },
   "recommendations": {
     "loadingMatches": "Loading matches…",
@@ -118,7 +124,10 @@
     "noMatches": "No equipment matches this job yet.",
     "noMatchesHint": "Try a different crop, operation, or check back once more owners list equipment.",
     "viewDetails": "View details",
-    "owner": "Owner: {{name}}"
+    "owner": "Owner: {{name}}",
+    "distanceAway": "{{d}} away",
+    "sortDistance": "Nearest first",
+    "withinRadius": "within {{km}} km"
   },
   "equipmentDetails": {
     "specifications": "Specifications",
@@ -179,7 +188,33 @@
     "requiredHint": "Name, equipment type, price and at least one operation are required.",
     "loadFailed": "Couldn't load this listing. It may have been deleted.",
     "notYourListing": "You can only edit your own listings.",
-    "saveFailed": "Couldn't save this listing. Try again."
+    "saveFailed": "Couldn't save this listing. Try again.",
+    "photosLabel": "Photos",
+    "photosOptional": "optional, up to 4",
+    "photosHint": "Up to {{max}} photos · compressed automatically to save data",
+    "photoAdd": "Add photo",
+    "photoMaxReached": "Maximum {{max}} photos",
+    "photoRemove": "Remove photo",
+    "photoTooLarge": "That file is too large — pick one under 15MB.",
+    "photoInvalidType": "Please pick an image file (JPG/PNG/WebP).",
+    "photoUnreadable": "Couldn't read that image — it may be corrupt.",
+    "photoHasErrors": "Some photos couldn't be read — remove the failed ones to continue.",
+    "photoStillCompressing": "Still preparing your photos — try again in a moment.",
+    "photoUploadFailed": "Photo upload failed — check your connection and retry. Your listing details are safe.",
+    "uploadingPhotos": "Uploading photos…",
+    "pinLabel": "Pin on map",
+    "pinHint": "so nearby farmers can find you",
+    "tapMapHint": "Tap the map to drop the pin, or drag it to adjust.",
+    "useMyLocation": "Use my location",
+    "locating": "Locating…",
+    "locationErrorDenied": "Location permission denied — tap the map or enter coordinates manually.",
+    "locationErrorTimeout": "Location timed out — tap the map or enter coordinates manually.",
+    "locationErrorUnavailable": "Location unavailable — tap the map or enter coordinates manually.",
+    "locationErrorUnsupported": "This browser can't detect location — tap the map or enter coordinates manually.",
+    "locationErrorInvalid": "Those coordinates look invalid — latitude −90…90, longitude −180…180.",
+    "latLabel": "Latitude",
+    "lngLabel": "Longitude",
+    "setCoordinates": "Set"
   },
   "booking": {
     "bookingNumber": "Booking #{{id}}",

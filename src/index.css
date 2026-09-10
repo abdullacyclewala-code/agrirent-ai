@@ -462,6 +462,13 @@ input[type="date"] { color-scheme: light; }
   }
 }
 
+/* Phase 6 item 4 — leaflet map sits on the ivory theme instead of flashing
+   white while OSM tiles load. */
+.leaflet-container {
+  background: #e9dfc9;
+  font: inherit;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-in,
   .skel {

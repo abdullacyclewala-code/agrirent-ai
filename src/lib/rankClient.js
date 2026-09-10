@@ -15,8 +15,9 @@ const TIMEOUT_MS = 45000;
  * @param {{crop:string|null, area_acres:number|null, operation:string, equipment_type?:string|null}} requirement
  * @param {Array} candidates - rules-filtered equipment rows (already passed §6.3).
  *   Only the fields the ranker actually uses are sent (id, equipment_type,
- *   hp, price, is_available, availability_quality) — no need to ship the
- *   whole row over the wire.
+ *   hp, price, is_available, availability_quality, distance_km) — no need to
+ *   ship the whole row over the wire. distance_km is null when geo wasn't
+ *   part of the search; the backend treats that as neutral (0.5).
  * @returns {Promise<Map<number, {rank_score:number, features:object}>|null>}
  *   null means: ranking endpoint unavailable — caller should keep the
  *   existing heuristic `matchScore` values untouched.
@@ -45,6 +46,7 @@ export async function rankCandidates(requirement, candidates) {
           price: c.price ?? null,
           is_available: c.is_available ?? true,
           availability_quality: c.availability_quality ?? null,
+          distance_km: c.distance_km ?? null,
         })),
       }),
       signal: controller.signal,

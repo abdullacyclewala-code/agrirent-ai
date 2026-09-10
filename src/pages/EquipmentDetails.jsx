@@ -5,8 +5,8 @@ import { MapPin, ChevronLeft } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Badge, Reveal } from "../components/ui/Primitives.jsx";
-import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
-import { artCategoryFor, equipmentTypeLabel, operationLabel, cropLabel } from "../lib/equipmentDisplay.js";
+import { EquipmentGallery } from "../components/ui/EquipmentPhoto.jsx";
+import { equipmentTypeLabel, operationLabel, cropLabel } from "../lib/equipmentDisplay.js";
 import { datesOverlap } from "../lib/bookingLifecycle.js";
 
 export default function EquipmentDetails() {
@@ -137,8 +137,8 @@ export default function EquipmentDetails() {
       <div className="grid grid-cols-1 gap-8 md:grid-cols-[1.3fr_1fr]">
         {/* gallery */}
         <div className="min-w-0">
-          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line">
-            <EquipmentArt category={artCategoryFor(eq.equipment_type)} className="h-full w-full" />
+          <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line bg-card p-2">
+            <EquipmentGallery images={eq.images} equipmentType={eq.equipment_type} name={eq.name} />
             <div className="absolute left-4 top-4 flex gap-2">
               <Badge tone={eq.is_available ? "leaf" : "rust"}>{eq.is_available ? t("equipmentDetails.available") : t("equipmentDetails.paused")}</Badge>
             </div>

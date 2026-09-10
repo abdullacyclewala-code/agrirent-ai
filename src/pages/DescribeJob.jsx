@@ -10,6 +10,13 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { runRulesFilter } from "../lib/rulesFilter.js";
 import { parseRequirementFreeText } from "../lib/llmClient.js";
 import { rankCandidates } from "../lib/rankClient.js";
+import {
+  getBrowserLocation,
+  isValidLatLng,
+  formatDistance,
+  DEFAULT_SEARCH_RADIUS_KM,
+  RADIUS_OPTIONS_KM,
+} from "../lib/geo.js";
 
 const crops = taxonomy.crops;
 const operations = taxonomy.operations;
@@ -57,6 +64,55 @@ export default function DescribeJob() {
   });
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  // Phase 6 item 4 — farmer coordinates for geo search. Optional: without
+  // them the search behaves exactly as before (no distance filter).
+  const [farmerCoords, setFarmerCoords] = useState(null); // { lat, lng } | null
+  const [radiusKm, setRadiusKm] = useState(DEFAULT_SEARCH_RADIUS_KM);
+  const [locating, setLocating] = useState(false);
+  const [geoError, setGeoError] = useState(null);
+
+  // Reuse last search's coords (saved to the profile on submit) so the
+  // farmer isn't re-prompted on every visit. Silent failure — geo is optional.
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select("latitude, longitude")
+          .eq("id", user.id)
+          .single();
+        if (data && isValidLatLng(data.latitude, data.longitude)) {
+          setFarmerCoords({ lat: Number(data.latitude), lng: Number(data.longitude) });
+        }
+      } catch {
+        /* geo is optional — ignore */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const captureFarmerLocation = async () => {
+    if (locating) return;
+    setLocating(true);
+    setGeoError(null);
+    try {
+      const { lat, lng } = await getBrowserLocation();
+      setFarmerCoords({ lat, lng });
+    } catch (err) {
+      const code = err?.code || "unavailable";
+      setGeoError(
+        code === "denied"
+          ? t("describeJob.geoDenied")
+          : code === "timeout"
+            ? t("describeJob.geoTimeout")
+            : t("describeJob.geoUnavailable")
+      );
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const canNext = useMemo(() => {
     switch (STEP_KEYS[step]) {
@@ -147,18 +203,58 @@ export default function DescribeJob() {
         requirementId = reqRow.id;
       }
 
-      // 2. Fetch equipment + run the rules-engine hard filter (§6.3)
-      const { data: equipmentRows, error: eqErr } = await supabase
-        .from("equipment")
-        .select("*, users:owner_id ( name )");
-      if (eqErr) throw eqErr;
+      // 2. Fetch equipment + run the rules-engine hard filter (§6.3).
+      // Phase 6 item 4: when the farmer shared their location, search via
+      // the nearby_equipment RPC (PostGIS ST_DWithin on BOTH the search
+      // radius AND each listing's service_area_radius_km). Any RPC failure
+      // falls back to the plain list — same always-works pattern as §4.5.
+      let equipmentRows;
+      let geoUsed = false;
+      if (isValidLatLng(farmerCoords?.lat, farmerCoords?.lng)) {
+        try {
+          const { data: nearby, error: rpcErr } = await supabase.rpc("nearby_equipment", {
+            p_lat: farmerCoords.lat,
+            p_lng: farmerCoords.lng,
+            p_radius_km: radiusKm,
+          });
+          if (rpcErr) throw rpcErr;
+          // Listings whose owners haven't pinned a location yet can't be
+          // distance-checked — include them (distance unknown) rather than
+          // hiding the marketplace while owners migrate.
+          const { data: unlocated } = await supabase
+            .from("equipment")
+            .select("*, users:owner_id ( name )")
+            .is("location", null)
+            .eq("is_available", true);
+          equipmentRows = [
+            ...(nearby || []),
+            ...(unlocated || []).map((r) => ({ ...r, distance_km: null })),
+          ];
+          geoUsed = true;
+        } catch (rpcErr) {
+          console.warn("[DescribeJob] geo search failed, falling back to full list:", rpcErr?.message);
+          const { data: fallback, error: fbErr } = await supabase
+            .from("equipment")
+            .select("*, users:owner_id ( name )");
+          if (fbErr) throw fbErr;
+          equipmentRows = fallback;
+        }
+      } else {
+        const { data: all, error: eqErr } = await supabase
+          .from("equipment")
+          .select("*, users:owner_id ( name )");
+        if (eqErr) throw eqErr;
+        equipmentRows = all;
+      }
 
       const normalized = (equipmentRows || []).map((row) => ({
         ...row,
-        owner_name: row.users?.name || t("common.owner"),
+        owner_name: row.owner_name || row.users?.name || t("common.owner"),
       }));
 
-      const { results, relaxedHp } = runRulesFilter(normalized, parsed_json, user?.id);
+      const { results, relaxedHp } = runRulesFilter(normalized, parsed_json, user?.id, {
+        distanceReason: (km) => t("recommendations.distanceAway", { d: formatDistance(km) }),
+      });
 
       // Phase 4 §6.4 "availability match quality" feature — check which of
       // the filtered candidates already have a Confirmed/In Use booking that
@@ -201,11 +297,23 @@ export default function DescribeJob() {
         : results;
       finalResults.sort((a, b) => b.matchScore - a.matchScore);
 
+      // Remember working coords on the profile (fire-and-forget) so the next
+      // search reuses them without re-prompting for location permission.
+      if (user && geoUsed) {
+        supabase
+          .from("users")
+          .update({ latitude: farmerCoords.lat, longitude: farmerCoords.lng })
+          .eq("id", user.id)
+          .then(({ error: saveErr }) => {
+            if (saveErr) console.warn("[DescribeJob] couldn't save farmer coords:", saveErr.message);
+          });
+      }
+
       sessionStorage.setItem(
         "agrirent_matches",
         JSON.stringify({
           requirementId,
-          requirement: { ...form, parsed_json },
+          requirement: { ...form, parsed_json, farmerCoords, radiusKm, geoUsed },
           results: finalResults,
           relaxedHp,
           rankedBy: rankedById ? "ml" : "heuristic",
@@ -382,11 +490,41 @@ export default function DescribeJob() {
               />
             </div>
             <button
-              onClick={() => set("location", "Village Rurka, Ludhiana (current location)")}
-              className="mt-3 flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-2"
+              onClick={captureFarmerLocation}
+              disabled={locating}
+              className="mt-3 flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-2 disabled:opacity-60"
             >
-              <LocateFixed size={15} /> {t("describeJob.useCurrentLocation")}
+              {locating ? <Loader2 size={15} className="animate-spin" /> : <LocateFixed size={15} />}
+              {locating ? t("describeJob.locating") : t("describeJob.useCurrentLocation")}
             </button>
+            {farmerCoords && (
+              <div className="mt-3 rounded-xl border border-sage/30 bg-sage-soft px-4 py-3">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-sage">
+                  <Check size={15} /> {t("describeJob.geoCaptured")}
+                  <span className="font-mono text-xs">
+                    ({farmerCoords.lat.toFixed(4)}, {farmerCoords.lng.toFixed(4)})
+                  </span>
+                </div>
+                <div className="mt-2.5 flex items-center gap-2">
+                  <span className="text-xs text-mut">{t("describeJob.radiusLabel")}</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {RADIUS_OPTIONS_KM.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setRadiusKm(r)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          radiusKm === r ? "bg-sage text-paper" : "bg-line-2 text-ink-2 hover:bg-line"
+                        }`}
+                      >
+                        {r} km
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+            {geoError && <p className="mt-2 text-xs text-accent">{geoError}</p>}
             <div className="mt-6 flex flex-wrap gap-2">
               {["Ludhiana", "Khanna", "Doraha", "Sahnewal"].map((d) => (
                 <Chip key={d} active={form.location.includes(d)} onClick={() => set("location", `${d}, Punjab`)}>

@@ -9,6 +9,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../lib/supabase.js";
 import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 import { enablePushNotifications } from "../lib/push.js";
+import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
+import { deleteListingPhotos } from "../lib/imageUpload.js";
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -59,7 +61,12 @@ export default function Profile() {
     if (!window.confirm(t("profile.confirmDelete", { name: item.name }))) return;
     setBusyId(item.id);
     const { error } = await supabase.from("equipment").delete().eq("id", item.id);
-    if (!error) fetchListings();
+    if (!error) {
+      // Best-effort: free the listing's photo storage too. Never blocks —
+      // deleteListingPhotos only ever warns, and orphans are tiny (~200KB).
+      deleteListingPhotos(supabase, user.id, item.id);
+      fetchListings();
+    }
     setBusyId(null);
   };
 
@@ -159,7 +166,9 @@ export default function Profile() {
                 {listings.map((l) => (
                   <Reveal key={l.id} className="flex flex-col gap-4 rounded-2xl border border-line bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-xl">🚜</div>
+                      <div className="h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                        <EquipmentPhoto images={l.images} equipmentType={l.equipment_type} alt="" className="h-full w-full" />
+                      </div>
                       <div>
                         <div className="font-medium text-ink">{l.name}</div>
                         <div className="text-xs text-mut">

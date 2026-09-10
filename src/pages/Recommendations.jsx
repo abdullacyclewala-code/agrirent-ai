@@ -5,8 +5,9 @@ import { useTranslation } from "react-i18next";
 import { MapPin, SlidersHorizontal, Pencil, ChevronDown, Star, Info } from "lucide-react";
 import taxonomy from "../data/taxonomy.json";
 import { Button, MatchRing, Reveal } from "../components/ui/Primitives.jsx";
-import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
-import { artCategoryFor, equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
+import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
+import { formatDistance } from "../lib/geo.js";
 
 export default function Recommendations() {
   const { t } = useTranslation();
@@ -37,9 +38,15 @@ export default function Recommendations() {
   const cropLabel = taxonomy.crops.find((c) => c.id === job?.crop)?.label || job?.crop;
   const opLabel = taxonomy.operations.find((o) => o.id === job?.operation)?.label || job?.operation;
 
+  const hasDistances = (results || []).some((r) => r.distance_km != null);
   const sorted = [...(results || [])].sort((a, b) => {
     if (sort === "match") return b.matchScore - a.matchScore;
     if (sort === "price") return a.price - b.price;
+    if (sort === "distance") {
+      const da = a.distance_km ?? Infinity; // unknown distance sorts last, never first
+      const db = b.distance_km ?? Infinity;
+      return da - db;
+    }
     return 0;
   });
 
@@ -60,6 +67,14 @@ export default function Recommendations() {
           <span>{job?.land} {t("describeJob.acres")}</span>
           <span className="text-mut2">·</span>
           <span className="flex items-center gap-1"><MapPin size={13} /> {job?.location || t("recommendations.yourArea")}</span>
+          {job?.geoUsed && (
+            <>
+              <span className="text-mut2">·</span>
+              <span className="rounded-full bg-sage-soft px-2 py-0.5 text-xs font-medium text-sage">
+                {t("recommendations.withinRadius", { km: job.radiusKm })}
+              </span>
+            </>
+          )}
         </div>
         <Link to="/describe-job" className="flex items-center gap-1.5 text-sm font-medium text-accent hover:text-accent-2">
           <Pencil size={14} /> {t("recommendations.edit")}
@@ -105,6 +120,7 @@ export default function Recommendations() {
                 {[
                   ["match", t("recommendations.sortMatch")],
                   ["price", t("recommendations.sortPrice")],
+                  ...(hasDistances ? [["distance", t("recommendations.sortDistance")]] : []),
                 ].map(([k, label]) => (
                   <button
                     key={k}
@@ -130,7 +146,7 @@ export default function Recommendations() {
                   className="group mb-6 grid grid-cols-1 gap-6 overflow-hidden rounded-3xl border border-accent/30 bg-card p-6 transition-shadow hover:shadow-[0_0_0_1px_rgba(168,67,31,0.35)] sm:grid-cols-[1.1fr_1.4fr] sm:p-2"
                 >
                   <div className="relative h-48 overflow-hidden rounded-2xl sm:h-full">
-                    <EquipmentArt category={artCategoryFor(top.equipment_type)} className="h-full w-full" />
+                    <EquipmentPhoto images={top.images} equipmentType={top.equipment_type} alt={top.name} className="h-full w-full" />
                   </div>
                   <div className="flex flex-col justify-center p-2 sm:p-4">
                     <div className="flex items-start justify-between gap-4">
@@ -151,6 +167,11 @@ export default function Recommendations() {
                       {top.location_label && (
                         <span className="flex items-center gap-1 text-mut"><MapPin size={13} /> {top.location_label}</span>
                       )}
+                      {top.distance_km != null && (
+                        <span className="font-mono text-xs text-sage">
+                          {t("recommendations.distanceAway", { d: formatDistance(top.distance_km) })}
+                        </span>
+                      )}
                       <span className="ml-auto font-mono text-lg text-accent">₹{top.price}<span className="text-sm text-mut2">/{top.price_unit}</span></span>
                     </div>
                   </div>
@@ -168,12 +189,13 @@ export default function Recommendations() {
                       className="flex w-full items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-card sm:px-5"
                     >
                       <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
-                        <EquipmentArt category={artCategoryFor(eq.equipment_type)} className="h-full w-full" />
+                        <EquipmentPhoto images={eq.images} equipmentType={eq.equipment_type} alt="" className="h-full w-full" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <h4 className="truncate font-display text-sm font-semibold text-ink sm:text-base">{eq.name}</h4>
                         <p className="mt-0.5 truncate text-xs text-mut">
                           {equipmentTypeLabel(eq.equipment_type)} · ₹{eq.price}/{eq.price_unit}
+                          {eq.distance_km != null && ` · ${formatDistance(eq.distance_km)}`}
                         </p>
                       </div>
                       <div className="hidden items-center gap-1 font-mono text-xs text-accent sm:flex">

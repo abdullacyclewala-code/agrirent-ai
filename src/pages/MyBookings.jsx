@@ -5,8 +5,7 @@ import { MapPin, Calendar } from "lucide-react";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Reveal } from "../components/ui/Primitives.jsx";
-import { EquipmentArt } from "../components/ui/EquipmentArt.jsx";
-import { artCategoryFor } from "../lib/equipmentDisplay.js";
+import { EquipmentPhoto } from "../components/ui/EquipmentPhoto.jsx";
 import { subscribeToUserBookings } from "../lib/realtime.js";
 import { expireStaleRequests } from "../lib/bookingLifecycle.js";
 
@@ -31,7 +30,7 @@ export default function MyBookings() {
     (async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("*, equipment:equipment_id ( name, equipment_type, location_label ), owner:owner_id ( name ), farmer:farmer_id ( name )")
+        .select("*, equipment:equipment_id ( name, equipment_type, location_label, images ), owner:owner_id ( name ), farmer:farmer_id ( name )")
         .or(`farmer_id.eq.${user.id},owner_id.eq.${user.id}`)
         .order("created_at", { ascending: false });
       if (error) {
@@ -67,7 +66,7 @@ export default function MyBookings() {
         (async () => {
           const { data } = await supabase
             .from("bookings")
-            .select("*, equipment:equipment_id ( name, equipment_type, location_label ), owner:owner_id ( name ), farmer:farmer_id ( name )")
+            .select("*, equipment:equipment_id ( name, equipment_type, location_label, images ), owner:owner_id ( name ), farmer:farmer_id ( name )")
             .eq("id", newRow.id)
             .single();
           if (data) setBookings((prev) => (prev ? [data, ...prev] : [data]));
@@ -102,7 +101,7 @@ export default function MyBookings() {
                   className="flex items-center gap-4 rounded-2xl border border-line bg-card p-4 transition-colors hover:border-mut2"
                 >
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl">
-                    <EquipmentArt category={artCategoryFor(b.equipment?.equipment_type)} className="h-full w-full" />
+                    <EquipmentPhoto images={b.equipment?.images} equipmentType={b.equipment?.equipment_type} alt="" className="h-full w-full" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">

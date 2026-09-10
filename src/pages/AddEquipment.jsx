@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense, lazy } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
@@ -6,6 +6,16 @@ import taxonomy from "../data/taxonomy.json";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { Button, Chip } from "../components/ui/Primitives.jsx";
+import PhotoPicker from "../components/ui/PhotoPicker.jsx";
+import {
+  uploadEquipmentPhoto,
+  deleteEquipmentPhoto,
+  MAX_PHOTOS_PER_LISTING,
+} from "../lib/imageUpload.js";
+import { isValidLatLng } from "../lib/geo.js";
+
+// Lazy: leaflet (~150KB) only loads when an owner opens this page.
+const LocationPicker = lazy(() => import("../components/ui/LocationPicker.jsx"));
 
 const emptyForm = {
   name: "",
@@ -28,8 +38,12 @@ export default function AddEquipment() {
   const { user } = useAuth();
 
   const [form, setForm] = useState(emptyForm);
+  const [photos, setPhotos] = useState([]); // PhotoPicker items (existing + staged new)
+  const [removedUrls, setRemovedUrls] = useState([]); // existing URLs to delete after a successful save
+  const [coords, setCoords] = useState(null); // { lat, lng } | null
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [saveStep, setSaveStep] = useState(null); // "photos" | "listing" | null
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -53,6 +67,15 @@ export default function AddEquipment() {
           service_area_radius_km: data.service_area_radius_km ?? 15,
           is_available: data.is_available,
         });
+        setPhotos(
+          (Array.isArray(data.images) ? data.images : [])
+            .filter(Boolean)
+            .slice(0, MAX_PHOTOS_PER_LISTING)
+            .map((url, i) => ({ key: `existing-${i}`, kind: "existing", url }))
+        );
+        if (isValidLatLng(data.latitude, data.longitude)) {
+          setCoords({ lat: Number(data.latitude), lng: Number(data.longitude) });
+        }
       }
       setLoading(false);
     })();
@@ -66,6 +89,18 @@ export default function AddEquipment() {
       [k]: f[k].includes(val) ? f[k].filter((x) => x !== val) : [...f[k], val],
     }));
 
+  const handlePhotosChange = (next) => {
+    // Track removed existing URLs so their storage objects can be deleted —
+    // but only after the listing save succeeds (never strand the DB row).
+    const nextKeys = new Set(next.map((p) => p.key));
+    for (const p of photos) {
+      if (p.kind === "existing" && !nextKeys.has(p.key) && p.url) {
+        setRemovedUrls((r) => (r.includes(p.url) ? r : [...r, p.url]));
+      }
+    }
+    setPhotos(next);
+  };
+
   const canSave =
     form.name.trim() &&
     form.equipment_type &&
@@ -73,10 +108,59 @@ export default function AddEquipment() {
     form.compatible_operations.length > 0;
 
   const save = async () => {
-    if (!canSave || !user) return;
+    if (!canSave || !user || saving) return;
+
+    const staged = photos.filter((p) => p.kind === "new");
+    if (staged.some((p) => p.error)) {
+      setError(t("addEquipment.photoHasErrors"));
+      return;
+    }
+    if (staged.some((p) => p.compressing)) {
+      setError(t("addEquipment.photoStillCompressing"));
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
+    // Phase 1 — upload staged photos FIRST, so the listing row is written
+    // once with its final image URLs (no partial states, no second update).
+    // New listings use a temp folder id; the public URL works the same and
+    // deletes resolve per-URL, so the folder name is cosmetic only.
+    const folderId = isEdit ? id : `pending-${crypto.randomUUID()}`;
+    const uploadedPaths = [];
+    const newUrls = [];
+    if (staged.length > 0) {
+      setSaveStep("photos");
+      for (const item of staged) {
+        setPhotos((prev) => prev.map((p) => (p.key === item.key ? { ...p, compressing: true } : p)));
+        try {
+          // eslint-disable-next-line no-await-in-loop
+          const { url, path } = await uploadEquipmentPhoto(supabase, user.id, folderId, item.file);
+          uploadedPaths.push(path);
+          newUrls.push(url);
+          setPhotos((prev) =>
+            prev.map((p) =>
+              p.key === item.key ? { ...p, compressing: false, error: null } : p
+            )
+          );
+        } catch (err) {
+          setPhotos((prev) =>
+            prev.map((p) =>
+              p.key === item.key ? { ...p, compressing: false, error: err?.message } : p
+            )
+          );
+          setSaving(false);
+          setSaveStep(null);
+          setError(t("addEquipment.photoUploadFailed"));
+          return; // listing untouched — user can retry (only failed items re-upload)
+        }
+      }
+    }
+
+    // Phase 2 — write the listing row.
+    setSaveStep("listing");
+    const keptExisting = photos.filter((p) => p.kind === "existing").map((p) => p.url);
     const payload = {
       owner_id: user.id,
       name: form.name.trim(),
@@ -87,7 +171,10 @@ export default function AddEquipment() {
       price: Number(form.price),
       price_unit: form.price_unit,
       location_label: form.location_label.trim() || null,
+      latitude: coords ? Number(coords.lat.toFixed(6)) : null,
+      longitude: coords ? Number(coords.lng.toFixed(6)) : null,
       service_area_radius_km: Number(form.service_area_radius_km) || 15,
+      images: [...keptExisting, ...newUrls].slice(0, MAX_PHOTOS_PER_LISTING),
       is_available: form.is_available,
     };
 
@@ -97,10 +184,22 @@ export default function AddEquipment() {
 
     const { error: err } = await query;
     setSaving(false);
+    setSaveStep(null);
 
     if (err) {
+      // Don't strand uploaded photos as orphans — best-effort cleanup.
+      for (const path of uploadedPaths) {
+        // eslint-disable-next-line no-await-in-loop
+        await deleteEquipmentPhoto(supabase, path);
+      }
       setError(err.message || t("addEquipment.saveFailed"));
       return;
+    }
+
+    // Listing saved — now it's safe to delete photos the user removed.
+    for (const url of removedUrls) {
+      // eslint-disable-next-line no-await-in-loop
+      await deleteEquipmentPhoto(supabase, url);
     }
     navigate("/profile");
   };
@@ -144,6 +243,10 @@ export default function AddEquipment() {
               </Chip>
             ))}
           </div>
+        </Field>
+
+        <Field label={t("addEquipment.photosLabel")} hint={t("addEquipment.photosOptional")}>
+          <PhotoPicker photos={photos} onChange={handlePhotosChange} disabled={saving} />
         </Field>
 
         <Field label={t("addEquipment.operationsLabel")} hint={t("addEquipment.operationsHint")}>
@@ -232,6 +335,18 @@ export default function AddEquipment() {
           />
         </Field>
 
+        <Field label={t("addEquipment.pinLabel")} hint={t("addEquipment.pinHint")}>
+          <Suspense
+            fallback={
+              <div className="flex h-64 items-center justify-center rounded-xl border border-line bg-card text-sm text-mut">
+                {t("common.loading")}
+              </div>
+            }
+          >
+            <LocationPicker value={coords} onChange={setCoords} disabled={saving} />
+          </Suspense>
+        </Field>
+
         {isEdit && (
           <Field label={t("addEquipment.availabilityLabel")}>
             <div className="flex gap-2">
@@ -243,7 +358,13 @@ export default function AddEquipment() {
       </div>
 
       <Button variant="primary" className="mt-10 w-full" onClick={save} disabled={!canSave || saving}>
-        {saving ? t("addEquipment.saving") : isEdit ? t("addEquipment.saveChanges") : t("addEquipment.publishListing")}
+        {saving
+          ? saveStep === "photos"
+            ? t("addEquipment.uploadingPhotos")
+            : t("addEquipment.saving")
+          : isEdit
+            ? t("addEquipment.saveChanges")
+            : t("addEquipment.publishListing")}
       </Button>
       {!canSave && (
         <p className="mt-3 text-center text-xs text-mut2">
