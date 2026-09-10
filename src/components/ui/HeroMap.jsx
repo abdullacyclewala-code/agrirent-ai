@@ -13,7 +13,7 @@ import map from "../../data/india.json";
 
 const ALERT_INDEX = 1; // Ludhiana — the demo high-demand zone
 // stations that visibly stream packets (all 15 at once is noise)
-const SENDERS = [0, 1, 4, 6, 8, 10, 13];
+const SENDERS = [0, 1, 3, 4, 6, 8, 10, 13];
 
 function arcPath(x1, y1, x2, y2) {
   const mx = (x1 + x2) / 2;
@@ -58,7 +58,7 @@ export default function HeroMap({ caption }) {
                 stroke={
                   i === ALERT_INDEX
                     ? "rgba(224, 122, 74, 0.35)"
-                    : "rgba(200, 214, 156, 0.16)"
+                    : "rgba(200, 214, 156, 0.24)"
                 }
                 strokeWidth="1"
                 strokeDasharray="2 6"
@@ -70,7 +70,7 @@ export default function HeroMap({ caption }) {
             {SENDERS.map((idx, k) => {
               const v = stations[idx];
               const alert = idx === ALERT_INDEX;
-              const dur = alert ? 3.2 : 4.5 + (k % 3) * 0.7;
+              const dur = alert ? 3.2 : 4.2 + (k % 3) * 0.6;
               const begin = `${(k * 1.35).toFixed(2)}s`;
               return (
                 <circle

@@ -107,7 +107,7 @@
 html, body, #root { height: 100%; }
 
 html {
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
 }
 
@@ -118,13 +118,12 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   line-height: 1.6;
-  overflow-x: hidden;
+  overflow-x: clip;
   width: 100%;
   max-width: 100vw;
 }
 
 #root {
-  overflow-x: hidden;
   max-width: 100vw;
 }
 
@@ -360,10 +359,10 @@ input[type="date"] { color-scheme: light; }
 }
 .ps-plane {
   position: relative;
-  width: 86%;
-  max-width: 560px;
+  width: 82%;
+  max-width: 540px;
   aspect-ratio: 800 / 850;
-  transform: rotateX(52deg) rotateZ(-14deg);
+  transform: rotateX(50deg) rotateZ(-12deg);
   transform-style: preserve-3d;
 }
 .ps-plane svg {
@@ -407,7 +406,7 @@ input[type="date"] { color-scheme: light; }
 
 /* dashboard hero variant — greeting inside the dark panel */
 .hero-dash {
-  min-height: 380px;
+  min-height: 460px;
 }
 .hero-dash h1 {
   font-size: clamp(26px, 3vw, 38px);
@@ -423,34 +422,43 @@ input[type="date"] { color-scheme: light; }
    ============================================================ */
 @media (max-width: 740px) {
   .hero {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
     border-radius: 20px;
     min-height: 0;
   }
+  /* map is the hero: first glance on mobile, text below it */
+  .hero .h-map {
+    order: -1;
+    min-height: 300px;
+    max-height: 320px;
+  }
+  .hero .h-map .ps-plane {
+    width: 80%;
+  }
   .hero .h-in {
-    padding: 26px 22px 6px;
+    order: 0;
+    padding: 4px 22px 24px;
   }
   .hero h1 {
-    font-size: 29px;
-    margin-top: 14px;
+    font-size: 28px;
+    margin-top: 12px;
   }
   .hero p {
     font-size: 13.5px;
-    margin-top: 12px;
+    margin-top: 10px;
     max-width: none;
   }
   .hero .h-cta {
-    margin-top: 20px;
+    margin-top: 18px;
   }
   .hero .h-cta .btn {
-    flex: 1 1 auto;
-  }
-  .hero .h-map {
-    min-height: 250px;
+    flex: 1 1 100%;
   }
   .h-cap {
-    bottom: 10px;
+    bottom: 8px;
     right: 14px;
+    font-size: 9px;
   }
 }
 

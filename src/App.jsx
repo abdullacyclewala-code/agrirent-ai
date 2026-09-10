@@ -83,7 +83,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-paper">
+    <div className="min-h-screen w-full max-w-[100vw] overflow-x-clip bg-paper">
       <RouteProgress path={location.pathname} />
       {isAuthenticated && <NavBar />}
       <AnimatePresence mode="wait">

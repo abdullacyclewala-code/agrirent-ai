@@ -49,12 +49,12 @@ export default function NavBar() {
       </header>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-line bg-paper/90 px-5 py-4 backdrop-blur-xl md:hidden">
-        <NavLink to="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-white">
-            <Sprout size={16} strokeWidth={2.5} />
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-line bg-paper/90 px-3 py-3 backdrop-blur-xl md:hidden">
+        <NavLink to="/" className="flex min-w-0 shrink-0 items-center gap-1.5">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-accent text-white">
+            <Sprout size={14} strokeWidth={2.5} />
           </span>
-          <span className="font-display text-base font-bold text-ink">{t("nav.brand")}</span>
+          <span className="whitespace-nowrap font-display text-[13px] font-bold text-ink">{t("nav.brand")}</span>
         </NavLink>
         <div className="flex items-center gap-2">
           <LanguageSwitcher />

@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { ArrowUpRight, Sparkles, Tractor, Radar, MapPin, ClipboardList } from "lucide-react";
 import HeroMap from "../components/ui/HeroMap.jsx";
-import LanguageSwitcher from "../components/ui/LanguageSwitcher.jsx";
 import { Reveal, SectionLabel, StatTile } from "../components/ui/Primitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { supabase } from "../lib/supabase.js";
@@ -76,14 +75,12 @@ export default function Dashboard() {
         {/* ---------------- PAGE HEADER ---------------- */}
         <div className="flex items-center justify-between gap-3 border-b border-line pb-4">
           <h2 className="font-display text-2xl font-semibold text-ink">{t("dashboard.overview")}</h2>
-          <div className="flex items-center gap-2">
-            {profile?.location_label && (
-              <span className="chip hidden sm:inline-flex">
-                <MapPin size={12} /> {profile.location_label}
-              </span>
-            )}
-            <LanguageSwitcher />
-          </div>
+          {profile?.location_label && (
+            <span className="chip max-w-[55%] truncate">
+              <MapPin size={12} className="shrink-0" />{" "}
+              <span className="truncate">{profile.location_label}</span>
+            </span>
+          )}
         </div>
 
         {/* ---------------- HERO ---------------- */}
@@ -126,7 +123,7 @@ export default function Dashboard() {
         </motion.div>
 
         {/* ---------------- STATS ---------------- */}
-        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-5 grid grid-cols-3 gap-3 sm:gap-4">
           <Reveal>
             <StatTile value={stats.equipment} label={t("dashboard.statEquipment")} />
           </Reveal>

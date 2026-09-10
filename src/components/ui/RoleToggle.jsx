@@ -26,7 +26,7 @@ export default function RoleToggle({ className = "" }) {
   return (
     <div className={`relative ${className}`}>
       <div
-        className={`inline-flex rounded-full border border-line bg-card p-1 text-xs ${
+        className={`inline-flex shrink-0 rounded-full border border-line bg-card p-1 text-[11px] sm:text-xs ${
           busy ? "opacity-60" : ""
         }`}
       >
@@ -34,7 +34,7 @@ export default function RoleToggle({ className = "" }) {
           type="button"
           disabled={busy}
           onClick={() => setRole("farmer")}
-          className={`px-3 py-1 rounded-full transition disabled:cursor-wait ${
+          className={`px-2 py-1 rounded-full transition sm:px-3 disabled:cursor-wait ${
             activeRole === "farmer" ? "bg-accent-soft text-accent font-semibold" : "text-mut"
           }`}
         >
@@ -44,7 +44,7 @@ export default function RoleToggle({ className = "" }) {
           type="button"
           disabled={busy}
           onClick={() => setRole("owner")}
-          className={`px-3 py-1 rounded-full transition disabled:cursor-wait ${
+          className={`px-2 py-1 rounded-full transition sm:px-3 disabled:cursor-wait ${
             activeRole === "owner" ? "bg-accent-soft text-accent font-semibold" : "text-mut"
           }`}
         >
