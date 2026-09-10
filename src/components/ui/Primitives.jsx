@@ -104,9 +104,10 @@ export function MatchRing({ score = 90, size = 64 }) {
 }
 
 export function StatTile({ label, value, sub, accent = false }) {
+  const long = typeof value === "string" && value.length > 6;
   return (
-    <div className="card p-4 sm:p-5">
-      <div className={`font-display text-2xl font-semibold sm:text-4xl ${accent ? "text-accent" : "text-ink"}`}>{value}</div>
+    <div className="card min-w-0 p-4 sm:p-5">
+      <div className={`font-display font-semibold leading-tight break-words ${long ? "text-xl sm:text-4xl" : "text-2xl sm:text-4xl"} ${accent ? "text-accent" : "text-ink"}`}>{value}</div>
       <div className="mt-1 text-[11px] leading-tight text-mut sm:text-sm sm:leading-normal">{label}</div>
       {sub && <div className="mt-2 text-xs text-sage">{sub}</div>}
     </div>

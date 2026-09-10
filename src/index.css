@@ -475,4 +475,11 @@ input[type="date"] { color-scheme: light; }
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+  /* Keep the hero network visibly alive: slow the radar sweep right
+     down instead of freezing it mid-frame (a parked beam looks broken).
+     28s per revolution is calm yet clearly moving. */
+  .h-map .ps-sweep {
+    animation-duration: 28s !important;
+    animation-iteration-count: infinite !important;
+  }
 }

@@ -123,14 +123,14 @@ export default function Dashboard() {
         </motion.div>
 
         {/* ---------------- STATS ---------------- */}
-        <div className="mt-5 grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
           <Reveal>
             <StatTile value={stats.equipment} label={t("dashboard.statEquipment")} />
           </Reveal>
           <Reveal delay={0.08}>
             <StatTile value={stats.bookings} label={t("dashboard.statBookings")} />
           </Reveal>
-          <Reveal delay={0.16}>
+          <Reveal delay={0.16} className="col-span-2 sm:col-span-1">
             <StatTile value={stats.latest} label={t("dashboard.statLatest")} accent />
           </Reveal>
         </div>
