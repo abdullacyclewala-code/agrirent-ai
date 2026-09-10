@@ -66,8 +66,6 @@
     "parseWithAi": "Parse with AI",
     "skipManual": "Skip, I'll fill it in manually",
     "parseFailed": "Couldn't reach the AI parser right now — no problem, just fill in the steps below.",
-    "parseOkFilled": "Got it — pre-filled below from your description. Check each step and adjust anything that's off.",
-    "parseOkPartial": "Understood most of it — please confirm the operation below.",
     "cropTitle": "What are you growing?",
     "cropSub": "This helps us match equipment built for your crop.",
     "operationTitle": "What's the job?",
@@ -109,7 +107,18 @@
     "radiusLabel": "Search within",
     "currentLocationAt": "Current location ({{lat}}, {{lng}})",
     "detectingPlace": "Detecting place name…",
-    "osmAttribution": "Place names © OpenStreetMap contributors"
+    "osmAttribution": "Place names © OpenStreetMap contributors",
+    "aiUnderstood": "Here's what I understood",
+    "aiAskCrop": "Which crop is this for?",
+    "aiAskOperation": "What work needs doing?",
+    "aiAskLand": "How much land?",
+    "aiUnknown": "Not sure yet",
+    "aiContinue": "Looks good — continue",
+    "aiFillManually": "Fill the rest manually",
+    "aiGotNone": "I couldn't pick out the details — answer the quick questions below and I'll take it from there.",
+    "aiNeedMore": "Good start — one or two quick questions below, then you're done.",
+    "aiLandSet": "Set",
+    "aiEditRow": "Edit"
   },
   "recommendations": {
     "loadingMatches": "Loading matches…",

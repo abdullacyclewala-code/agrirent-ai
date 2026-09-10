@@ -40,6 +40,7 @@ import json
 import logging
 import os
 import re
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 import requests
@@ -48,6 +49,10 @@ from .taxonomy import allowed_vocab_lists
 from .semantic_match import best_match
 
 logger = logging.getLogger("agrirent.llm_service")
+
+# Farmers are in India — relative dates ("tomorrow", "next Monday") in the
+# prompt resolve against IST, not server-local time (Render runs on UTC).
+IST = timezone(timedelta(hours=5, minutes=30))
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
@@ -66,7 +71,7 @@ class LLMAllProvidersFailed(Exception):
     pass
 
 
-def _system_prompt(vocab: dict, synonyms: dict) -> str:
+def _system_prompt(vocab: dict, synonyms: dict, today_ist: date) -> str:
     # §6.1: system prompt includes the full allowed vocabulary and instructs
     # JSON-only output matching the exact shape.
     # Also inject the known regional-term synonym map (§3.1) directly, since
@@ -76,22 +81,68 @@ def _system_prompt(vocab: dict, synonyms: dict) -> str:
     return (
         "You extract structured farming-job data from a farmer's free-text message. "
         "The farmer may write in English, Hindi, Marathi, or Hinglish (mixed/romanized). "
+        f"Today's date is {today_ist.isoformat()} ({today_ist.strftime('%A')}). "
         "Respond with ONLY a JSON object, no markdown, no explanation, matching exactly this shape:\n"
         '{"crop": "string or null", "area_acres": number or null, '
-        '"operation": "string", "equipment_type": "string or null"}\n\n'
+        '"operation": "string or null", "equipment_type": "string or null", '
+        '"location_text": "string or null", "needed_date": "YYYY-MM-DD string or null"}\n\n'
         f"crop MUST be one of: {vocab['crops']} or null if not mentioned.\n"
-        f"operation MUST be one of: {vocab['operations']}. This field is required — infer the "
-        "most likely operation from context if not stated explicitly.\n"
+        f"operation MUST be one of: {vocab['operations']}, or null if the message says nothing "
+        "about what work is needed (greetings, equipment-only requests like \"need a tractor\"). "
+        "Prefer a real inference when the context hints at the work "
+        "(e.g. \"cut my wheat\" -> harvesting).\n"
         f"equipment_type MUST be one of: {vocab['equipment_types']}, or null if it can be "
         "inferred from the operation alone.\n"
         "area_acres is a plain number (convert hectares/bigha to acres if mentioned; 1 hectare "
-        "= 2.47 acres). Use null if no land size is mentioned.\n\n"
+        "= 2.47 acres). Use null if no land size is mentioned.\n"
+        "location_text is the village/town/city/area the farmer mentions — copy their words "
+        "exactly, in the original script (e.g. \"Nashik\", \"नाशिक\", \"near Shirdi\"). "
+        "Use null if no place is mentioned.\n"
+        "needed_date is the date the farmer needs the equipment, resolved against today's date "
+        "above: \"tomorrow\" means the next day, \"next Monday\" the coming Monday, \"15 September\" "
+        "the nearest future one. ALWAYS output YYYY-MM-DD exactly (e.g. \"2026-09-20\"). "
+        "Use null if no date is mentioned, or if the resolved date would be in the past.\n\n"
         "Known regional/informal terms — use these exact mappings whenever one appears "
         "in the farmer's text, they are NOT guesses:\n"
         f"{synonym_lines}\n\n"
         "If the farmer uses a regional/informal word not in the list above, still pick your best "
         "guess from the allowed lists above — do not invent new vocabulary."
     )
+
+
+_NEEDED_DATE_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+_LOCATION_MAX_LEN = 120
+# Dates further out than this are almost certainly model error ("2099") rather
+# than real farm planning — reject them so the farmer picks a date manually.
+_NEEDED_DATE_MAX_DAYS_OUT = 730
+
+
+def _clean_location_text(value) -> Optional[str]:
+    """Free-form place name, copied as written. Empty/blank -> None."""
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text:
+        return None
+    return text[:_LOCATION_MAX_LEN]
+
+
+def _clean_needed_date(value, today: date) -> Optional[str]:
+    """Strict ISO date within [today, today+730d]. Anything else -> None."""
+    if not isinstance(value, str):
+        return None
+    match = _NEEDED_DATE_RE.match(value.strip())
+    if not match:
+        return None
+    try:
+        parsed = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        return None  # e.g. month 13, Feb 30
+    if parsed < today:
+        return None
+    if (parsed - today).days > _NEEDED_DATE_MAX_DAYS_OUT:
+        return None
+    return parsed.isoformat()
 
 
 def _extract_json_object(text: str) -> Optional[dict]:
@@ -125,7 +176,7 @@ def _call_groq(system_prompt: str, raw_text: str) -> Optional[dict]:
                     {"role": "user", "content": raw_text},
                 ],
                 "temperature": 0.1,
-                "max_tokens": 300,
+                "max_tokens": 400,
                 "response_format": {"type": "json_object"},
             },
             timeout=REQUEST_TIMEOUT_S,
@@ -158,7 +209,7 @@ def _call_gemini(system_prompt: str, raw_text: str) -> Optional[dict]:
                 "systemInstruction": {"parts": [{"text": system_prompt}]},
                 "generationConfig": {
                     "temperature": 0.1,
-                    "maxOutputTokens": 300,
+                    "maxOutputTokens": 400,
                     "responseMimeType": "application/json",
                 },
             },
@@ -182,7 +233,8 @@ def _call_gemini(system_prompt: str, raw_text: str) -> Optional[dict]:
 
 def parse_requirement_via_llm(raw_text: str, language: Optional[str], taxonomy: dict) -> dict:
     vocab = allowed_vocab_lists(taxonomy)
-    system_prompt = _system_prompt(vocab, taxonomy.get("synonyms", {}))
+    today_ist = datetime.now(IST).date()
+    system_prompt = _system_prompt(vocab, taxonomy.get("synonyms", {}), today_ist)
 
     provider_used = None
     parsed = _call_groq(system_prompt, raw_text)
@@ -228,12 +280,13 @@ def parse_requirement_via_llm(raw_text: str, language: Optional[str], taxonomy: 
                 f"Could not confidently match '{parsed.get(field)}' for {field} — left blank."
             )
 
-    # operation is required by schema — if we still don't have one, this parse is unusable.
-    if not corrected.get("operation"):
-        raise LLMAllProvidersFailed(
-            "LLM response did not resolve to a valid operation even after semantic fallback."
-        )
-
+    # NOTE (smart-routing change): operation used to be required here — a parse
+    # without one raised LLMAllProvidersFailed (HTTP 422). It is now nullable:
+    # a partial parse (e.g. crop only) is still useful, because the frontend
+    # asks targeted follow-up questions for exactly the missing slots instead
+    # of throwing the whole parse away. 422 now means ONLY "both providers
+    # unreachable/unusable" (raised above), and the frontend's §4.5 manual
+    # fallback still triggers on that.
     area = corrected.get("area_acres")
     try:
         corrected["area_acres"] = float(area) if area is not None else None
@@ -245,6 +298,10 @@ def parse_requirement_via_llm(raw_text: str, language: Optional[str], taxonomy: 
         "area_acres": corrected.get("area_acres"),
         "operation": corrected.get("operation"),
         "equipment_type": corrected.get("equipment_type"),
+        # New free-form slots (absent/None on old model outputs — callers must
+        # treat them as optional, see ParseRequirementOut).
+        "location_text": _clean_location_text(corrected.get("location_text")),
+        "needed_date": _clean_needed_date(corrected.get("needed_date"), today_ist),
         "provider_used": provider_used,
         "confidence_notes": confidence_notes,
     }

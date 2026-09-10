@@ -9,7 +9,7 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { runRulesFilter } from "../lib/rulesFilter.js";
 import { cropLabel, operationLabel, operationDesc, priceUnitLabel } from "../lib/equipmentDisplay.js";
-import { fetchSlotsForMany, dateStatusOn } from "../lib/availability.js";
+import { fetchSlotsForMany, dateStatusOn, todayLocal } from "../lib/availability.js";
 import { parseRequirementFreeText } from "../lib/llmClient.js";
 import { rankCandidates } from "../lib/rankClient.js";
 import {
@@ -24,11 +24,18 @@ import {
 const crops = taxonomy.crops;
 const operations = taxonomy.operations;
 
-// Phase 3: "freetext" is a new first step — describe the job in your own words
-// and the LLM (via backend) pre-fills crop/operation/land. If it's skipped, or
-// the LLM path is unavailable, the rest of the wizard (Phase 2, unchanged)
-// still works exactly as before — §4.5 "must always work independently of LLM uptime".
+// Phase 3: "freetext" is the first step — describe the job in your own words
+// and the LLM (via backend) extracts crop/operation/land/location/date. Smart
+// routing (see handleFreeTextSubmit): a complete parse jumps straight to the
+// review step; a core-only parse (crop+operation+land, no place/date) jumps to
+// the location step; a partial parse stays here and asks follow-up questions
+// for exactly the missing slots. If it's skipped, or the LLM path is
+// unavailable, the rest of the wizard (Phase 2, unchanged) still works exactly
+// as before — §4.5 "must always work independently of LLM uptime".
 const STEP_KEYS = ["freetext", "crop", "operation", "land", "location", "date", "review"];
+// Slots the AI step is responsible for — location/date keep their dedicated
+// steps (GPS capture + calendar UI beat chat questions for those).
+const AI_CORE_SLOTS = ["crop", "operation", "land"];
 
 function StepShell({ title, sub, children }) {
   return (
@@ -56,6 +63,10 @@ export default function DescribeJob() {
   const [freeText, setFreeText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [parseNotice, setParseNotice] = useState(null); // { ok: bool, message: string }
+  // Which slots the AI step has resolved (parse result + follow-up answers).
+  // null = no parse yet (or returned here from the manual steps — panel reset).
+  const [aiFilled, setAiFilled] = useState(null);
+  const [customLand, setCustomLand] = useState("");
   const [form, setForm] = useState({
     crop: "wheat",
     operation: "harvesting",
@@ -153,17 +164,33 @@ export default function DescribeJob() {
     if (step < STEP_KEYS.length - 1) setStep(step + 1);
     else submit();
   };
-  const goBack = () => (step > 0 ? setStep(step - 1) : navigate("/"));
+  const goBack = () => {
+    if (step === 0) {
+      navigate("/");
+      return;
+    }
+    if (step === 1) {
+      setAiFilled(null);
+      setParseNotice(null);
+    }
+    setStep(step - 1);
+  };
 
-  // Phase 3: LLM free-text parse (§6.1). Always falls through to the manual
-  // wizard on any failure — see llmClient.js and §4.5.
+  // Backend-validated YYYY-MM-DD within a sane window. Re-checked here so a
+  // stale/misbehaving backend can never plant a garbage date in the form.
+  const isUsableNeededDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "") && s >= todayLocal();
+
+  // Phase 3: LLM free-text parse (§6.1) + smart routing. Always falls through
+  // to the manual wizard on any failure — see llmClient.js and §4.5.
   const handleFreeTextSubmit = async () => {
+    if (parsing) return; // both the in-card and bottom-nav buttons call here
     if (!freeText.trim()) {
       setStep(1); // nothing typed — just go to manual crop step
       return;
     }
     setParsing(true);
     setParseNotice(null);
+    setAiFilled(null);
     const result = await parseRequirementFreeText(freeText.trim(), "auto");
     setParsing(false);
 
@@ -178,20 +205,74 @@ export default function DescribeJob() {
 
     const cropValid = result.crop && crops.some((c) => c.id === result.crop);
     const opValid = result.operation && operations.some((o) => o.id === result.operation);
+    const landValid = result.area_acres && result.area_acres > 0;
+    const locText = (result.location_text || "").trim() || null;
+    const dateValid = isUsableNeededDate(result.needed_date);
 
     setForm((f) => ({
       ...f,
       crop: cropValid ? result.crop : f.crop,
       operation: opValid ? result.operation : f.operation,
-      land: result.area_acres && result.area_acres > 0 ? result.area_acres : f.land,
+      land: landValid ? result.area_acres : f.land,
+      location: locText || f.location,
+      date: dateValid ? result.needed_date : f.date,
       llmProviderUsed: result.provider_used,
     }));
 
+    const filled = {
+      crop: !!cropValid,
+      operation: !!opValid,
+      land: !!landValid,
+      location: !!locText,
+      date: dateValid,
+    };
+    const coreDone = AI_CORE_SLOTS.every((k) => filled[k]);
+    // Everything extracted (even place + date) → straight to summary/confirm.
+    if (coreDone && filled.location && filled.date) {
+      setStep(6);
+      return;
+    }
+    // Core job known, place/date unknown → straight to location fetching.
+    if (coreDone) {
+      setStep(4);
+      return;
+    }
+    // Too little info → stay here and ask about the missing slots below.
+    setAiFilled(filled);
     setParseNotice({
       ok: true,
-      message: opValid ? t("describeJob.parseOkFilled") : t("describeJob.parseOkPartial"),
+      message: t(Object.values(filled).some(Boolean) ? "describeJob.aiNeedMore" : "describeJob.aiGotNone"),
     });
-    setStep(1);
+  };
+
+  // --- Follow-up question helpers (AI step, shown when aiFilled is set) ---
+  const firstMissingCore = aiFilled ? AI_CORE_SLOTS.find((k) => !aiFilled[k]) ?? null : null;
+  const markSlotFilled = (key) => setAiFilled((f) => (f ? { ...f, [key]: true } : f));
+  const answerCrop = (id) => {
+    set("crop", id);
+    markSlotFilled("crop");
+  };
+  const answerOperation = (id) => {
+    set("operation", id);
+    markSlotFilled("operation");
+  };
+  const answerLand = (v) => {
+    if (v > 0) {
+      set("land", v);
+      markSlotFilled("land");
+    }
+  };
+  // Core complete via follow-ups → onward, skipping answered manual steps.
+  const continueFromAi = () => {
+    setStep(aiFilled?.location && aiFilled?.date ? 6 : 4);
+  };
+  // "Fill manually" → first manual step whose slot is still missing.
+  const manualStepForMissing = () => {
+    if (!aiFilled) return 1;
+    if (!aiFilled.crop) return 1;
+    if (!aiFilled.operation) return 2;
+    if (!aiFilled.land) return 3;
+    return 4;
   };
 
   const submit = async () => {
@@ -416,6 +497,111 @@ export default function DescribeJob() {
               </div>
             )}
 
+            {aiFilled && (
+              <div className="mt-6 rounded-2xl border border-accent/25 bg-accent-soft/50 p-5">
+                <p className="text-sm font-semibold text-ink">{t("describeJob.aiUnderstood")}</p>
+                <div className="mt-3 divide-y divide-line rounded-xl border border-line bg-card text-sm">
+                  {[
+                    [t("describeJob.reviewCrop"), aiFilled.crop ? cropLabel(form.crop) : null],
+                    [t("describeJob.reviewOperation"), aiFilled.operation ? operationLabel(form.operation) : null],
+                    [t("describeJob.reviewLand"), aiFilled.land ? `${form.land} ${t("describeJob.acres")}` : null],
+                    [t("describeJob.reviewLocation"), aiFilled.location ? form.location : null],
+                    [t("describeJob.reviewDate"), aiFilled.date ? form.date : null],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                      <span className="text-mut">{label}</span>
+                      {value ? (
+                        <span className="flex items-center gap-1.5 font-medium text-ink">
+                          <Check size={14} className="text-sage" /> {value}
+                        </span>
+                      ) : (
+                        <span className="text-mut2">{t("describeJob.aiUnknown")}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {firstMissingCore === "crop" && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-ink">{t("describeJob.aiAskCrop")}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                      {crops.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => answerCrop(c.id)}
+                          className="flex items-center gap-2 rounded-xl border border-line bg-card p-3 text-left transition-all hover:border-accent"
+                        >
+                          <span className="text-xl">{c.icon}</span>
+                          <span className="text-xs font-medium text-ink">{cropLabel(c.id)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {firstMissingCore === "operation" && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-ink">{t("describeJob.aiAskOperation")}</p>
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {operations.map((op) => (
+                        <button
+                          key={op.id}
+                          onClick={() => answerOperation(op.id)}
+                          className="rounded-xl border border-line bg-card p-3 text-left text-sm font-medium text-ink transition-all hover:border-accent"
+                        >
+                          {operationLabel(op.id)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {firstMissingCore === "land" && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-ink">{t("describeJob.aiAskLand")}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {[1, 2, 5, 10].map((acres) => (
+                        <button
+                          key={acres}
+                          onClick={() => answerLand(acres)}
+                          className="rounded-full border border-line bg-card px-4 py-2 text-sm font-medium text-ink transition-all hover:border-accent"
+                        >
+                          {acres} {t("describeJob.acres")}
+                        </button>
+                      ))}
+                      <span className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          min="0.5"
+                          step="0.5"
+                          value={customLand}
+                          onChange={(e) => setCustomLand(e.target.value)}
+                          placeholder="3.5"
+                          className="w-24 rounded-full border border-line bg-card px-4 py-2 text-sm text-ink placeholder:text-mut2 focus:border-accent"
+                        />
+                        <button
+                          onClick={() => {
+                            answerLand(parseFloat(customLand));
+                            setCustomLand("");
+                          }}
+                          disabled={!(parseFloat(customLand) > 0)}
+                          className="rounded-full bg-ink px-4 py-2 text-sm font-medium text-paper transition-opacity disabled:opacity-40"
+                        >
+                          {t("describeJob.aiLandSet")}
+                        </button>
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {!firstMissingCore && (
+                  <Button variant="primary" onClick={continueFromAi} className="mt-4">
+                    {t("describeJob.aiContinue")} <ArrowRight size={16} />
+                  </Button>
+                )}
+              </div>
+            )}
+
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Button variant="primary" onClick={handleFreeTextSubmit} disabled={parsing}>
                 {parsing ? (
@@ -429,11 +615,11 @@ export default function DescribeJob() {
                 )}
               </Button>
               <button
-                onClick={() => setStep(1)}
+                onClick={() => setStep(aiFilled ? manualStepForMissing() : 1)}
                 disabled={parsing}
                 className="flex items-center gap-1.5 text-sm font-medium text-mut hover:text-ink disabled:opacity-40"
               >
-                <PenLine size={14} /> {t("describeJob.skipManual")}
+                <PenLine size={14} /> {t(aiFilled ? "describeJob.aiFillManually" : "describeJob.skipManual")}
               </button>
             </div>
           </StepShell>
@@ -596,16 +782,26 @@ export default function DescribeJob() {
             )}
             <div className="divide-y divide-line rounded-2xl border border-line bg-card">
               {[
-                [t("describeJob.reviewCrop"), cropLabel(form.crop)],
-                [t("describeJob.reviewOperation"), operationLabel(form.operation)],
-                [t("describeJob.reviewLand"), `${form.land} ${t("describeJob.acres")}`],
-                [t("describeJob.reviewLocation"), form.location || "—"],
-                [t("describeJob.reviewDate"), form.date || "—"],
-                [t("describeJob.reviewNotes"), form.notes || t("describeJob.reviewNone")],
-              ].map(([label, value]) => (
-                <div key={label} className="flex items-center justify-between px-5 py-4 text-sm">
-                  <span className="text-mut">{label}</span>
-                  <span className="font-medium text-ink">{value}</span>
+                [t("describeJob.reviewCrop"), cropLabel(form.crop), 1],
+                [t("describeJob.reviewOperation"), operationLabel(form.operation), 2],
+                [t("describeJob.reviewLand"), `${form.land} ${t("describeJob.acres")}`, 3],
+                [t("describeJob.reviewLocation"), form.location || "—", 4],
+                [t("describeJob.reviewDate"), form.date || "—", 5],
+                [t("describeJob.reviewNotes"), form.notes || t("describeJob.reviewNone"), 5],
+              ].map(([label, value, stepIdx]) => (
+                <div key={label} className="flex items-center justify-between gap-3 px-5 py-4 text-sm">
+                  <span className="shrink-0 text-mut">{label}</span>
+                  <span className="flex min-w-0 items-center gap-2 text-right font-medium text-ink">
+                    <span className="truncate">{value}</span>
+                    <button
+                      onClick={() => setStep(stepIdx)}
+                      title={`${t("describeJob.aiEditRow")}: ${label}`}
+                      aria-label={`${t("describeJob.aiEditRow")}: ${label}`}
+                      className="shrink-0 rounded-lg p-1.5 text-mut2 transition hover:bg-cream hover:text-accent"
+                    >
+                      <PenLine size={13} />
+                    </button>
+                  </span>
                 </div>
               ))}
             </div>
@@ -617,9 +813,23 @@ export default function DescribeJob() {
         <button onClick={goBack} className="flex items-center gap-1.5 text-sm font-medium text-mut hover:text-ink">
           <ArrowLeft size={16} /> {t("common.back")}
         </button>
-        <Button variant="primary" onClick={goNext} disabled={!canNext}>
-          {step === STEP_KEYS.length - 1 ? t("describeJob.findMatches") : t("describeJob.continueBtn")} <ArrowRight size={16} />
-        </Button>
+        {STEP_KEYS[step] === "freetext" ? (
+          <Button variant="primary" onClick={handleFreeTextSubmit} disabled={parsing}>
+            {parsing ? (
+              <>
+                <Loader2 className="animate-spin" size={16} /> {t("describeJob.parsingLabel")}
+              </>
+            ) : (
+              <>
+                {freeText.trim() ? t("describeJob.parseWithAi") : t("describeJob.continueBtn")} <ArrowRight size={16} />
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button variant="primary" onClick={goNext} disabled={!canNext}>
+            {step === STEP_KEYS.length - 1 ? t("describeJob.findMatches") : t("describeJob.continueBtn")} <ArrowRight size={16} />
+          </Button>
+        )}
       </div>
     </main>
   );

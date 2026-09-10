@@ -49,7 +49,7 @@ from .taxonomy import load_taxonomy
 from .ranking.ranker_service import rank_candidates as _rank_candidates
 from .notifications import send_push_to_tokens, message_for_status, new_request_message, tokens_for_users
 
-app = FastAPI(title="AgriRent AI Backend", version="0.5.0")
+app = FastAPI(title="AgriRent AI Backend", version="0.6.0")
 
 # CORS: allow the Vite dev server + the deployed Vercel frontend.
 # Set FRONTEND_ORIGIN in Render env vars to the real deployed URL.
@@ -76,8 +76,16 @@ class ParseRequirementIn(BaseModel):
 class ParseRequirementOut(BaseModel):
     crop: Optional[str] = None
     area_acres: Optional[float] = None
+    # Nullable since the smart-routing change: a message with no inferable
+    # work ("need a tractor", greetings) parses to operation=null and the
+    # frontend asks a follow-up question for it (llm_service.py note).
     operation: Optional[str] = None
     equipment_type: Optional[str] = None
+    # Free-form slots: place as written (original script, max 120 chars) and
+    # needed date as strict YYYY-MM-DD within [today, today+730d] (IST).
+    # Both optional — old model outputs / bare-bones parses omit them.
+    location_text: Optional[str] = None
+    needed_date: Optional[str] = None
     provider_used: str  # "groq" | "gemini" | "semantic_fallback"
     confidence_notes: list[str] = []
 
@@ -87,10 +95,12 @@ def parse_requirement(payload: ParseRequirementIn):
     """
     §6.1 LLM layer entrypoint. Tries Groq → Gemini in order (see llm_service.py
     for why that order, a documented deviation from the master doc's
-    Gemini→Groq default). If both providers fail or produce nothing usable,
+    Gemini→Groq default). If both providers fail or return unusable output,
     returns 422 — the frontend's existing manual-form path (Phase 2,
     DescribeJob.jsx) is the always-available fallback per §4.5, so we do not
-    invent a fake result here.
+    invent a fake result here. A *partial* parse (some slots null, including
+    operation) is a 200, not a 422 — the frontend asks follow-up questions
+    for exactly the missing slots.
     """
     taxonomy = load_taxonomy()
     try:

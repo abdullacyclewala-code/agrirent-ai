@@ -15,8 +15,11 @@ const TIMEOUT_MS = 45000;
 /**
  * @param {string} rawText - the farmer's free-text job description
  * @param {string} language - "en" | "hi" | "mr" | "hinglish" | "auto"
- * @returns {Promise<{crop, area_acres, operation, equipment_type, provider_used, confidence_notes}|null>}
+ * @returns {Promise<{crop, area_acres, operation, equipment_type, location_text, needed_date, provider_used, confidence_notes}|null>}
  *   null means: LLM path unavailable — caller should fall back to the manual form.
+ *   Any slot may be null (partial parse, including operation) — the caller asks
+ *   follow-up questions for exactly the missing slots. `location_text` /
+ *   `needed_date` may also be absent entirely on old backends — treat as null.
  */
 export async function parseRequirementFreeText(rawText, language = "auto") {
   if (!BACKEND_URL) {
