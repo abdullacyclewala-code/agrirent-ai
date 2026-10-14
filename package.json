@@ -7,7 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "node scripts/test-trust.mjs",
+    "test:live": "node scripts/test-trust-live.mjs",
+    "test:e2e": "node scripts/audit-e2e.mjs",
+    "test:browser": "node scripts/audit-browser.mjs",
+    "test:backend": "cd backend && python3 -m pytest -q",
+    "check:demo": "node scripts/check-demo-ready.mjs",
+    "fixtures": "python3 scripts/make-fixtures.py",
+    "guide": "python3 scripts/make-demo-guide.py"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",
@@ -33,6 +41,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "autoprefixer": "^10.5.4",
     "oxlint": "^1.75.0",
+    "playwright": "^1.64.1",
     "postcss": "^8.5.26",
     "puppeteer-core": "^25.8.0",
     "tailwindcss": "^4.3.3",

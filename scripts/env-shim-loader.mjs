@@ -1,11 +1,19 @@
-// Node ESM loader shim for `scripts/test-trust-live.mjs`.
+// Node ESM loader shim for the live tests (`scripts/test-trust-live.mjs`,
+// `scripts/audit-e2e.mjs`).
 //
-// The app's src/ modules are written for Vite, so they read config from
-// `import.meta.env`. Plain node has no such object, so this loader rewrites
-// that access to a global the test populates before importing anything. It
-// exists so the live test can run the *actual shipped modules* — no copies, no
-// stubs of the code under test, nothing that can drift from what is deployed.
+// Two jobs, both about running the *actual shipped* src/ modules under plain
+// node instead of copying them:
+//
+//   1. `import.meta.env` → a global the test populates before importing
+//      anything (Vite provides that object in the browser; node does not).
+//   2. JSON imports. Vite imports `src/data/taxonomy.json` bare, which is valid
+//      for the bundler but needs an explicit import attribute under node's ESM
+//      loader. Without this, any module that touches the taxonomy (the rules
+//      filter, and everything that imports it) cannot be loaded by a test.
 export async function load(url, context, next) {
+  if (url.endsWith(".json")) {
+    return next(url, { ...context, importAttributes: { type: "json" } });
+  }
   const result = await next(url, context);
   if (!url.includes("/src/")) return result;
   let source = result.source?.toString?.() ?? "";

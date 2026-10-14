@@ -20,7 +20,9 @@ export default function Dashboard() {
   const { t, i18n } = useTranslation();
   const { profile, user } = useAuth();
   const isOwnerMode = profile?.is_owner && !profile?.is_farmer;
-  const [stats, setStats] = useState({ equipment: "—", bookings: "—", latest: "—" });
+  // `latest` holds the RAW status: translating at render time keeps the tile in
+  // step when the language changes, instead of freezing the label chosen at fetch.
+  const [stats, setStats] = useState({ equipment: "—", bookings: "—", latest: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +45,7 @@ export default function Dashboard() {
         setStats({
           equipment: eqRes.count ?? "—",
           bookings: user ? active : "—",
-          latest: bookingStatusLabel(rows[0]?.status, t),
+          latest: rows[0]?.status ?? null,
         });
       } catch {
         /* keep fallbacks — stats must never break the dashboard */
@@ -134,7 +136,7 @@ export default function Dashboard() {
             <StatTile value={stats.bookings} label={t("dashboard.statBookings")} />
           </Reveal>
           <Reveal delay={0.16} className="col-span-2 sm:col-span-1">
-            <StatTile value={stats.latest} label={t("dashboard.statLatest")} accent />
+            <StatTile value={bookingStatusLabel(stats.latest, t)} label={t("dashboard.statLatest")} accent />
           </Reveal>
         </div>
 
