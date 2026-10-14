@@ -15,6 +15,10 @@
 
 ## 0. Before you start
 
+> **Short on time?** `docs/AgriRent_Demo_Guide.pdf` is the 4-page version of this
+> file, written for a live demo in front of an audience. This document is the
+> long-form script for testing properly.
+
 **You need two accounts, on two devices (or two browser profiles):**
 
 | Role | Who signs in | What they do |
