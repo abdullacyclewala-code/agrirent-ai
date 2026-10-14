@@ -8,6 +8,7 @@ import { Button, Badge, Reveal } from "../components/ui/Primitives.jsx";
 import { EquipmentGallery } from "../components/ui/EquipmentPhoto.jsx";
 import { equipmentTypeLabel, operationLabel, cropLabel, priceUnitLabel } from "../lib/equipmentDisplay.js";
 import { fetchSlots, checkAvailability, formatSlotRange } from "../lib/availability.js";
+import EquipmentCondition from "../components/inspection/EquipmentCondition.jsx";
 
 export default function EquipmentDetails() {
   const { t } = useTranslation();
@@ -183,6 +184,9 @@ export default function EquipmentDetails() {
               </div>
             </div>
           </Reveal>
+
+          {/* Phase 7 — the machine's condition record, before anyone books. */}
+          <EquipmentCondition equipmentId={eq.id} />
 
           <Reveal delay={0.1} className="mt-10">
             <h2 className="font-display text-lg font-semibold text-ink">{t("equipmentDetails.ownerLabel")}</h2>

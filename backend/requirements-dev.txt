@@ -1,0 +1,3 @@
+# Dev-only (not installed on Render — keeps the free-tier build lean).
+# Run the trust-layer tests:  python3 scripts/make-fixtures.py && pytest
+pytest==8.3.4

@@ -30,6 +30,24 @@ services:
         sync: false
       - key: WEBHOOK_SECRET
         sync: false
+      # Phase 7 — trust layer: vision provider chain, JWT validation and the
+      # policy version stamped into settlements. All optional: with none of
+      # them set, /verification/* still produces a full report from the
+      # deterministic signals and reports ai_status "unavailable" (see
+      # app/vision/providers.py).
+      - key: VISION_PROVIDER_ORDER
+        value: gemini,groq,cloudflare
+      - key: GEMINI_VISION_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GROQ_VISION_MODEL
+        value: meta-llama/llama-4-scout-17b-16e-instruct
+      - key: CF_VISION_MODEL
+        value: "@cf/meta/llama-3.2-11b-vision-instruct"
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: TRUST_POLICY_VERSION
+        value: "2026-10-1"
+
       # Phase 6 item 2 — multilingual semantic double-check, via Cloudflare
       # Workers AI (BGE-M3) (see backend/README.md "Multilingual semantic
       # double-check"). Optional: unset = semantic_match.py falls straight

@@ -10,6 +10,7 @@ import { equipmentTypeLabel, priceUnitLabel } from "../lib/equipmentDisplay.js";
 import { subscribeToBooking } from "../lib/realtime.js";
 import { expireStaleRequests, conflictOutOverlappingRequests } from "../lib/bookingLifecycle.js";
 import { fetchSlots, checkAvailability, createBookedSlot, removeBookedSlot } from "../lib/availability.js";
+import TrustPanel from "../components/inspection/TrustPanel.jsx";
 
 // Matches the `status` values used in supabase/schema.sql `bookings` table.
 const TERMINAL_NEGATIVE = ["Rejected", "Cancelled", "Expired", "Conflicted"];
@@ -293,6 +294,14 @@ export default function Booking() {
 
         {/* details card */}
         <div>
+          {/* Phase 7 — condition evidence for this rental: one primary action,
+              always the same shape, right where the rental status lives. */}
+          {!isNegative && (
+            <Reveal className="mb-5">
+              <TrustPanel booking={booking} />
+            </Reveal>
+          )}
+
           <Reveal className="rounded-3xl border border-line bg-card p-6">
             <div className="flex items-center gap-3">
               <div className="h-16 w-16 overflow-hidden rounded-xl">

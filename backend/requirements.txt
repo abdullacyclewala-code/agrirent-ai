@@ -9,5 +9,8 @@ lightgbm==4.7.0
 numpy==2.5.2
 joblib==1.5.3
 
+# Phase 7 — vision evidence analysis (decode, perceptual hash, EXIF, quality)
+Pillow==12.3.0
+
 # Phase 4 — FCM push notifications
 firebase-admin==7.5.0

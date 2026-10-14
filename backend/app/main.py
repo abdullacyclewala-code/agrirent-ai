@@ -27,6 +27,14 @@ already notifies on any status change. What Phase 5 DOES add here is
 the ranker on real booking outcomes once enough exist, replacing
 `train_ranker.py`'s synthetic cold-start data. See that file's docstring.
 
+Phase 7 adds `/verification/*` (see app/vision/): the trust layer that makes
+both parties' condition reports verifiable — server-side evidence checks
+(hash/pixel/exif/GPS/clock), a vision-model reading of the photos, and a
+before/after comparison of handover vs return. The routes and reasoning live
+in app/vision/routes.py; the deterministic half of the analysis runs with no
+API keys at all, so the feature degrades to "no AI today" rather than "no
+report today".
+
 Why a backend exists at all (per master doc §0 STATUS note): secrets (LLM
 keys, then Firebase service-account credentials) can't safely live in
 frontend code. Equipment/booking CRUD, the rules-engine filter, and the
@@ -48,8 +56,9 @@ from .llm_service import parse_requirement_via_llm, LLMAllProvidersFailed
 from .taxonomy import load_taxonomy
 from .ranking.ranker_service import rank_candidates as _rank_candidates
 from .notifications import send_push_to_tokens, message_for_status, new_request_message, tokens_for_users
+from .vision.routes import router as verification_router
 
-app = FastAPI(title="AgriRent AI Backend", version="0.6.0")
+app = FastAPI(title="AgriRent AI Backend", version="0.7.0")
 
 # CORS: allow the Vite dev server + the deployed Vercel frontend.
 # Set FRONTEND_ORIGIN in Render env vars to the real deployed URL.
@@ -63,9 +72,12 @@ app.add_middleware(
 )
 
 
+app.include_router(verification_router)
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "phase": 5}
+    return {"status": "ok", "phase": 7}
 
 
 class ParseRequirementIn(BaseModel):

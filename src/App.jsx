@@ -13,6 +13,9 @@ import Booking from "./pages/Booking.jsx";
 import MyBookings from "./pages/MyBookings.jsx";
 import Profile from "./pages/Profile.jsx";
 import Auth from "./pages/Auth.jsx";
+import ConditionReport from "./pages/ConditionReport.jsx";
+import DamageClaim from "./pages/DamageClaim.jsx";
+import VerifyReport from "./pages/VerifyReport.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import { useAuth } from "./context/AuthContext.jsx";
 import { listenForForegroundMessages } from "./lib/push.js";
@@ -89,6 +92,9 @@ export default function App() {
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/auth" element={<Auth />} />
+          {/* Phase 7 — public by design: anyone holding a report code (a bank,
+              an insurer, a court) can check that a report is intact. */}
+          <Route path="/verify/:code" element={<VerifyReport />} />
           <Route path="/" element={<ProtectedRoute><PageTransition><Dashboard /></PageTransition></ProtectedRoute>} />
           <Route path="/describe-job" element={<ProtectedRoute><PageTransition><DescribeJob /></PageTransition></ProtectedRoute>} />
           <Route path="/recommendations" element={<ProtectedRoute><PageTransition><Recommendations /></PageTransition></ProtectedRoute>} />
@@ -98,6 +104,8 @@ export default function App() {
           <Route path="/booking/:id" element={<ProtectedRoute><PageTransition><Booking /></PageTransition></ProtectedRoute>} />
           <Route path="/bookings" element={<ProtectedRoute><PageTransition><MyBookings /></PageTransition></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><PageTransition><Profile /></PageTransition></ProtectedRoute>} />
+          <Route path="/report/:id" element={<ProtectedRoute><PageTransition><ConditionReport /></PageTransition></ProtectedRoute>} />
+          <Route path="/claim/:bookingId" element={<ProtectedRoute><PageTransition><DamageClaim /></PageTransition></ProtectedRoute>} />
         </Routes>
       </AnimatePresence>
       {isAuthenticated && <div className="h-16 md:hidden" />}
