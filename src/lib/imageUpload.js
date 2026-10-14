@@ -151,7 +151,17 @@ export async function uploadEquipmentPhoto(supabase, userId, listingId, file) {
     .upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
 
   if (error) {
-    throw new UploadError("upload-failed", friendlyStorageError(error));
+    // Same rule as the inspection evidence: a code the UI can translate, with
+    // the English sentence attached for logs.
+    const friendly = friendlyStorageError(error);
+    const err = new UploadError("upload-failed", friendly);
+    err.code =
+      /permission|policy|unauthorized/i.test(friendly) ? "storage_blocked"
+      : /isn't set up/i.test(friendly) ? "bucket_missing"
+      : /full/i.test(friendly) ? "photo_too_large"
+      : /network/i.test(friendly) ? "network_dropped"
+      : "upload_failed";
+    throw err;
   }
   const { data } = supabase.storage.from(EQUIPMENT_PHOTOS_BUCKET).getPublicUrl(path);
   return { url: data.publicUrl, path, bytes };

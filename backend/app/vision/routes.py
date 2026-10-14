@@ -74,6 +74,9 @@ class AnalyzeIn(BaseModel):
     chain_intact: Optional[bool] = None
     required_slots: Optional[list[str]] = None
     compare: Optional[dict[str, Any]] = None
+    # UI language, so the AI's human-readable findings come back in the same
+    # language the rest of the screen is in. Codes/enums stay English.
+    lang: Optional[str] = Field(default=None, pattern="^(en|hi|mr)$")
 
 
 class FinalizeIn(BaseModel):

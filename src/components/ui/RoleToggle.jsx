@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { errorText } from "../../lib/errors.js";
 
 export default function RoleToggle({ className = "" }) {
   const { t } = useTranslation();
@@ -20,7 +21,7 @@ export default function RoleToggle({ className = "" }) {
     const roleField = role === "farmer" ? "is_farmer" : "is_owner";
     const { error: err } = await toggleRole(roleField);
     setBusy(false);
-    if (err) setError(err.message || t("common.roleSwitchFailed"));
+    if (err) setError(errorText(err, t, "common.roleSwitchFailed"));
   };
 
   return (

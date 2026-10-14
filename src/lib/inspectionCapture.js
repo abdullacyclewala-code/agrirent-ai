@@ -672,7 +672,7 @@ export async function uploadEvidencePhoto(supabase, { bookingId, reportId, photo
   const { error } = await supabase.storage
     .from("inspection-photos")
     .upload(path, photo.blob, { contentType: "image/jpeg", upsert: false });
-  if (error) throw new Error(friendlyStorageError(error));
+  if (error) throw codedStorageError(error);
   onProgress?.(1);
   return path;
 }
@@ -693,19 +693,35 @@ export async function signedEvidenceUrls(supabase, paths, expiresIn = 3600) {
   return map;
 }
 
-function friendlyStorageError(error) {
+/**
+ * Turn a storage failure into something the UI can TRANSLATE.
+ *
+ * The English sentence is still attached (so a log or a future caller always has
+ * something readable), but the `code` is what the screens use: they look up
+ * `trust.err_<code>` in the user's language and only fall back to this text.
+ * Returning bare English here was one of the reasons the UI looked partly
+ * untranslated — a failed upload showed an English sentence in a Marathi screen.
+ */
+const STORAGE_ERROR_CODES = [
+  ["storage_blocked", ["row-level security", "policy", "unauthorized", "jwt", "permission"]],
+  ["bucket_missing", ["bucket"]],
+  ["photo_too_large", ["exceeded", "quota", "limit", "too large"]],
+  ["network_dropped", ["network", "fetch", "failed to fetch", "timeout", "offline"]],
+];
+
+export function codedStorageError(error, fallbackCode = "upload_failed") {
   const msg = (error?.message || "").toLowerCase();
-  if (msg.includes("row-level security") || msg.includes("policy") || msg.includes("unauthorized")) {
-    return "Upload blocked — you may not be a party on this booking, or the session expired.";
-  }
-  if (msg.includes("bucket") && msg.includes("not found")) {
-    return "Evidence storage isn't set up yet (bucket missing).";
-  }
-  if (msg.includes("exceeded") || msg.includes("quota") || msg.includes("limit")) {
-    return "The photo was too large for storage. Try retaking it.";
-  }
-  if (msg.includes("network") || msg.includes("fetch")) {
-    return "Network dropped during upload — your photos are still here, tap retry.";
-  }
-  return error?.message || "Photo upload failed — please retry.";
+  const hit = STORAGE_ERROR_CODES.find(([, needles]) => needles.some((n) => msg.includes(n)));
+  const code = hit ? hit[0] : fallbackCode;
+  const english = {
+    storage_blocked: "Upload blocked — you may not be a party on this booking, or the session expired.",
+    bucket_missing: "Evidence storage isn't set up yet (bucket missing).",
+    photo_too_large: "The photo was too large for storage. Try retaking it.",
+    network_dropped: "Network dropped during upload — your photos are still here, tap retry.",
+    upload_failed: "Photo upload failed — please retry.",
+  }[code];
+  const err = new Error(error?.message || english);
+  err.code = code;
+  err.english = english;
+  return err;
 }

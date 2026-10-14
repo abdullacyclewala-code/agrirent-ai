@@ -51,12 +51,15 @@ export async function enablePushNotifications(userId, opts = {}) {
       .from("push_tokens")
       .upsert({ user_id: userId, token, platform: "web" }, { onConflict: "token" });
     if (error) {
-      return { ok: false, message: error.message || msg("push.pushSaveFailed", "Couldn't save your notification token.") };
+      // The toast stays translated; the raw (English) reason goes to the console.
+      console.warn("[agrirent] push token save failed:", error.message || error);
+      return { ok: false, message: msg("push.pushSaveFailed", "Couldn't save your notification token.") };
     }
 
     return { ok: true, message: msg("push.pushOn", "Notifications are on.") };
   } catch (err) {
-    return { ok: false, message: err.message || msg("push.pushFailed", "Couldn't enable notifications.") };
+    console.warn("[agrirent] enabling notifications failed:", err?.message || err);
+    return { ok: false, message: msg("push.pushFailed", "Couldn't enable notifications.") };
   }
 }
 

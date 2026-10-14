@@ -497,3 +497,66 @@ def test_unilateral_and_missing_slots_use_the_shared_names():
     assert "unilateral_report" in signals["flags"]
     assert "unilateral" not in signals["flags"]
     assert "missing_required_slots" in signals["flags"]
+
+
+# ---------------------------------------------------------------------------
+# Output language — the UI is translated, so the AI's free text has to be too
+# ---------------------------------------------------------------------------
+
+def test_language_instruction_is_appended_to_the_prompts():
+    """`lang` on the request reaches the prompt, and the instruction is explicit
+    that codes/enums must stay English — they are identifiers shared with the
+    database and the UI's own translation keys."""
+    from app.vision.providers import LANGUAGE_NAMES, output_language_line
+
+    for code, name in LANGUAGE_NAMES.items():
+        line = output_language_line(code)
+        assert name in line
+        assert "must not be translated" in line
+        assert "English" in line
+
+    # Unknown/absent language degrades to today's behaviour, never an error.
+    assert output_language_line(None) == ""
+    assert output_language_line("") == ""
+    assert output_language_line("fr") == ""
+    assert output_language_line("HI") and "Hindi" in output_language_line("HI")
+
+
+def test_request_language_is_optional_and_validated():
+    from app.vision.routes import AnalyzeIn
+
+    assert AnalyzeIn(booking_id=1, kind="handover").lang is None
+    assert AnalyzeIn(booking_id=1, kind="handover", lang="mr").lang == "mr"
+    with pytest.raises(ValueError):
+        AnalyzeIn(booking_id=1, kind="handover", lang="klingon")
+
+
+def test_ai_readings_are_cached_per_language():
+    """A reading written in Marathi must never be served to an English screen."""
+    from app.vision import analyze as analyze_mod
+
+    calls: list[str] = []
+
+    def fake_vision(images, prompt):
+        calls.append(prompt)
+        return {"provider": "fake", "data": {"shows_equipment": True, "damage": []}}
+
+    monkey = analyze_mod.providers.vision_json
+    analyze_mod.providers.vision_json = fake_vision
+    analyze_mod._CACHE.clear()
+    try:
+        measured = {"server_sha256": "abc123", "analysis_jpeg": b"jpeg"}
+        photo = {"slot": "full_left", "watermark_text": "AR-TEST"}
+        equipment = {"name": "Tractor", "type": "tractor"}
+
+        analyze_mod._ai_photo(photo, measured, equipment, "en")
+        analyze_mod._ai_photo(photo, measured, equipment, "en")   # cache hit
+        assert len(calls) == 1
+
+        analyze_mod._ai_photo(photo, measured, equipment, "mr")   # different language
+        assert len(calls) == 2
+        assert "Marathi" in calls[1]
+        assert "Marathi" not in calls[0]
+    finally:
+        analyze_mod.providers.vision_json = monkey
+        analyze_mod._CACHE.clear()

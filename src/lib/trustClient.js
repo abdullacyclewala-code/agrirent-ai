@@ -9,6 +9,7 @@
 
 import { supabase } from "./supabase.js";
 import { POLICY, POLICY_VERSION, verdictFor, FLAGS, isFatalFlag } from "./depositPolicy.js";
+import { appLanguage } from "./format.js";
 import { hammingDistance, haversineKm } from "./inspectionCapture.js";
 
 const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "").replace(/\/+$/, "");
@@ -135,6 +136,9 @@ export async function analyzeReport({ report, booking, equipment, photos, before
 
   try {
     const result = await post("/verification/analyze", {
+      // The AI writes the free-text findings (part names, descriptions, notes)
+      // in the language the screen is in; codes stay English on purpose.
+      lang: appLanguage(),
       booking_id: booking.id,
       report_id: report.id,
       kind: report.kind,

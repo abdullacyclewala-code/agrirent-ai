@@ -91,9 +91,13 @@ def _slot_hint(slot: str) -> str:
     }.get(slot, slot)
 
 
-def _ai_photo(photo: dict[str, Any], measured: dict[str, Any], equipment: dict[str, Any]) -> Optional[dict]:
+def _ai_photo(photo: dict[str, Any], measured: dict[str, Any], equipment: dict[str, Any],
+              lang: Optional[str] = None) -> Optional[dict]:
     """One AI reading per photo, cached by the image's own hash."""
-    cache_key = f"photo:{measured['server_sha256']}"
+    # Language is part of the key: the free text inside the reading is written
+    # in the language it was requested in, so one language's result must never
+    # be served for another.
+    cache_key = f"photo:{measured['server_sha256']}:{lang or 'en'}"
     if cache_key in _CACHE:
         return _CACHE[cache_key]
 
@@ -101,7 +105,7 @@ def _ai_photo(photo: dict[str, Any], measured: dict[str, Any], equipment: dict[s
         equipment=f"{equipment.get('name') or 'equipment'} ({equipment.get('type') or 'unknown type'})",
         slot_hint=_slot_hint(photo.get("slot", "")),
         watermark=photo.get("watermark_text") or "(none recorded)",
-    )
+    ) + providers.output_language_line(lang)
     try:
         result = providers.vision_json([measured["analysis_jpeg"]], prompt)
     except providers.VisionUnavailable as exc:
@@ -153,8 +157,10 @@ def _deterministic_diff(before_analysis: Optional[dict], after_analysis: Optiona
 
 def _ai_compare(before_jpeg: bytes, after_jpeg: bytes, before_analysis: Optional[dict],
                 after_analysis: Optional[dict], slot: str, equipment: dict[str, Any],
-                known_damage: list[dict], watermark: str) -> Optional[dict]:
-    cache_key = f"compare:{signals.sha256_hex(before_jpeg)}:{signals.sha256_hex(after_jpeg)}"
+                known_damage: list[dict], watermark: str,
+                lang: Optional[str] = None) -> Optional[dict]:
+    cache_key = (f"compare:{signals.sha256_hex(before_jpeg)}:"
+                 f"{signals.sha256_hex(after_jpeg)}:{lang or 'en'}")
     if cache_key in _CACHE:
         return _CACHE[cache_key]
 
@@ -167,7 +173,7 @@ def _ai_compare(before_jpeg: bytes, after_jpeg: bytes, before_analysis: Optional
         equipment=f"{equipment.get('name') or 'equipment'} ({equipment.get('type') or 'unknown type'})",
         known_damage=known,
         watermark=watermark or "(none recorded)",
-    )
+    ) + providers.output_language_line(lang)
     try:
         result = providers.vision_json([before_jpeg, after_jpeg], prompt)
     except providers.VisionUnavailable:
@@ -210,6 +216,8 @@ def run_analysis(payload: dict[str, Any], supabase: SupabaseREST) -> dict[str, A
     """Analyze one condition report (handover or return), optionally comparing
     it against the handover report of the same booking."""
     policy = {**DEFAULT_POLICY, **(payload.get("policy") or {})}
+    # Language of the *free text* the AI writes back (codes stay English).
+    lang = payload.get("lang")
     equipment = payload.get("equipment") or {}
     photos = payload.get("photos") or []
     compare_ctx = payload.get("compare") or None
@@ -264,7 +272,7 @@ def run_analysis(payload: dict[str, Any], supabase: SupabaseREST) -> dict[str, A
 
         enriched = {**photo, **measured, "captured_at_epoch": _epoch_from(photo)}
 
-        ai = _ai_photo(enriched, measured, equipment)
+        ai = _ai_photo(enriched, measured, equipment, lang)
         if ai:
             ai_status = "ok" if ai_status in ("ok", "disabled") else ai_status
             ai_provider = ai_provider or ai["provider"]
@@ -313,6 +321,7 @@ def run_analysis(payload: dict[str, Any], supabase: SupabaseREST) -> dict[str, A
             equipment=equipment,
             supabase=supabase,
             policy=policy,
+            lang=lang,
         )
 
     # ---- report-level roll-up ---------------------------------------------
@@ -360,7 +369,8 @@ def _epoch_from(photo: dict[str, Any]) -> Optional[float]:
 
 def run_compare(*, after_photos: list[dict[str, Any]], after_results: list[dict[str, Any]],
                 compare_ctx: dict[str, Any], equipment: dict[str, Any],
-                supabase: SupabaseREST, policy: dict[str, Any]) -> dict[str, Any]:
+                supabase: SupabaseREST, policy: dict[str, Any],
+                lang: Optional[str] = None) -> dict[str, Any]:
     """Compare a return report against the booking's handover report, slot by
     slot: the single most decisive artefact in a damage dispute."""
     before_by_slot = {p.get("slot"): p for p in (compare_ctx.get("before_photos") or [])}
@@ -387,7 +397,7 @@ def run_compare(*, after_photos: list[dict[str, Any]], after_results: list[dict[
                 after_jpeg = signals.analysis_jpeg(signals.open_image(after_data))
                 watermark = after.get("watermark_text") or before.get("watermark_text") or ""
                 ai_result = _ai_compare(before_jpeg, after_jpeg, before_ai, after_ai, slot, equipment,
-                                        known_damage, watermark)
+                                        known_damage, watermark, lang)
                 if ai_result:
                     comparison = {"method": "ai", **ai_result["data"], "provider": ai_result["provider"]}
             except Exception as exc:

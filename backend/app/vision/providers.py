@@ -184,6 +184,43 @@ _PROVIDERS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# Output language
+# ---------------------------------------------------------------------------
+# The UI is fully translated (en/hi/mr), so the AI's *human-readable* text has
+# to arrive in the same language or the report page reads half-English. The
+# frontend sends its current language with the analyze request and we append
+# one instruction to whichever prompt is being used.
+#
+# Codes and enum tokens are deliberately NOT translated: `kind`, `severity`,
+# flag codes and check codes are a shared vocabulary between this service, the
+# database and the UI's own translations. Translating them would silently break
+# every lookup downstream, so the instruction says so explicitly.
+
+LANGUAGE_NAMES = {
+    "en": "English",
+    "hi": "Hindi (written in Devanagari script)",
+    "mr": "Marathi (written in Devanagari script)",
+}
+
+
+def output_language_line(lang: Optional[str]) -> str:
+    """Instruction appended to a prompt so free text comes back in `lang`.
+
+    Returns "" for anything unrecognised — an unknown language must degrade to
+    today's behaviour (English free text), never to a broken request.
+    """
+    name = LANGUAGE_NAMES.get((lang or "").strip().lower())
+    if not name:
+        return ""
+    return (
+        f"\n\nWrite every human-readable text value in {name}: part names, "
+        "descriptions, notes, wear-and-tear items and any narrative sentence. "
+        "Keep every key, code and enum token exactly as specified above, in "
+        "English — those are shared identifiers and must not be translated."
+    )
+
+
 def vision_json(images: list[bytes], prompt: str) -> dict[str, Any]:
     """
     Run the chain and return {provider, data}. Raises VisionUnavailable when

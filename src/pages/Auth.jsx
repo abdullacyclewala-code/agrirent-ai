@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { authErrorText } from "../lib/errors.js";
 import { Sprout } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
@@ -27,7 +28,7 @@ export default function Auth() {
     const { error: authError } = await action;
     setBusy(false);
     if (authError) {
-      setError(authError.message);
+      setError(authErrorText(authError, t));
       return;
     }
     if (mode === "signup") {

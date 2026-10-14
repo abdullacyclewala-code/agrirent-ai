@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { errorText } from "../lib/errors.js";
 import { ArrowLeft, Loader2, IndianRupee, AlertTriangle, Check, Scale, Info, Camera, Paperclip } from "lucide-react";
 import { Button, Chip, SectionLabel } from "../components/ui/Primitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -61,11 +62,13 @@ export default function DamageClaim() {
       setKnownDamage(dmg);
       setSettlement(settle);
     } catch (err) {
-      setError(err?.message);
+      setError(errorText(err, t, "trust.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [bookingId]);
+    // `t` is a dependency: switching language must re-render the error banner
+    // in the newly chosen language, not keep the old one on screen.
+  }, [bookingId, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -95,7 +98,7 @@ export default function DamageClaim() {
       });
       setEstimate({ id, previewUrl });
     } catch (err) {
-      setError(err?.message || t("trust.estimateUploadFailed"));
+      setError(errorText(err, t, "trust.estimateUploadFailed"));
     } finally {
       setEstimateBusy(false);
     }
@@ -120,7 +123,7 @@ export default function DamageClaim() {
       setAmount(""); setDescription(""); setParts([]); setEstimate(null);
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.actionFailed"));
+      setError(errorText(err, t, "trust.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -140,7 +143,7 @@ export default function DamageClaim() {
       });
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.actionFailed"));
+      setError(errorText(err, t, "trust.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -157,7 +160,7 @@ export default function DamageClaim() {
       });
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.actionFailed"));
+      setError(errorText(err, t, "trust.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -173,7 +176,7 @@ export default function DamageClaim() {
       });
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.actionFailed"));
+      setError(errorText(err, t, "trust.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -243,7 +246,7 @@ export default function DamageClaim() {
               <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-mut">{t("trust.amountLabel")}</span>
               <input
                 type="number" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)}
-                placeholder="e.g. 1500"
+                placeholder={t("trust.amountPlaceholder")}
                 className="w-full rounded-xl border border-line bg-paper px-3 py-2.5 text-sm text-ink outline-none focus:border-accent"
               />
               {claimNeedsEstimate(Number(amount)) && (
@@ -427,7 +430,7 @@ export default function DamageClaim() {
           <ul className="space-y-1 text-xs text-ink-2">
             {knownDamage.map((d) => (
               <li key={d.id}>
-                <b>{d.part}</b> — {t(`trust.damage_${d.kind}`, d.kind)} · {d.status}
+                <b>{d.part}</b> — {t(`trust.damage_${d.kind}`, d.kind)} · {t(`trust.damageStatus_${d.status}`, d.status)}
               </li>
             ))}
           </ul>

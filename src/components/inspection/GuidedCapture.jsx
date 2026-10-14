@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { errorText } from "../../lib/errors.js";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, Check, RotateCcw, AlertTriangle, Loader2, X, Info } from "lucide-react";
 import { Button, Chip } from "../ui/Primitives.jsx";
@@ -102,7 +103,7 @@ export default function GuidedCapture({ booking, report, role, userId, equipment
         });
         setCaptured((prev) => ({ ...prev, [slot]: { ...prepared, slot, required: meta.required } }));
       } catch (err) {
-        setError(t("trust.captureFailed", { message: err?.message || "" }));
+        setError(errorText(err, t, "trust.captureFailed"));
       } finally {
         setBusy(false);
       }
@@ -168,7 +169,8 @@ export default function GuidedCapture({ booking, report, role, userId, equipment
       }
       onComplete(photos);
     } catch (err) {
-      setError(err?.message || t("trust.uploadFailed"));
+      // A storage failure arrives with a `code` we can translate.
+      setError(errorText(err, t, "trust.uploadFailed"));
       setBusy(false);
       setProgressText(null);
     }

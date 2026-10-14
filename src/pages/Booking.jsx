@@ -204,7 +204,9 @@ export default function Booking() {
         <span className="font-mono text-[11px] uppercase tracking-widest text-sage">{t("booking.bookingNumber", { id: booking.id })}</span>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="font-display text-2xl font-bold text-ink sm:text-3xl">
-            {isNegative ? t("booking.statusTitle", { status: booking.status.toLowerCase() }) : t("booking.trackingTitle")}
+            {isNegative
+              ? t("booking.statusTitle", { status: bookingStatusLabel(booking.status, t) })
+              : t("booking.trackingTitle")}
           </h1>
           {liveUpdate && (
             <span className="flex items-center gap-1 rounded-full bg-sage-soft px-2.5 py-1 text-[11px] font-medium text-sage">

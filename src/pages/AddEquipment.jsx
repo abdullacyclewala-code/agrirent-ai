@@ -1,6 +1,7 @@
 import { useState, useEffect, Suspense, lazy } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { errorText } from "../lib/errors.js";
 import { ArrowLeft } from "lucide-react";
 import taxonomy from "../data/taxonomy.json";
 import { supabase } from "../lib/supabase.js";
@@ -149,7 +150,7 @@ export default function AddEquipment() {
         } catch (err) {
           setPhotos((prev) =>
             prev.map((p) =>
-              p.key === item.key ? { ...p, compressing: false, error: err?.message } : p
+              p.key === item.key ? { ...p, compressing: false, error: errorText(err, t, "addEquipment.photoUploadFailed") } : p
             )
           );
           setSaving(false);
@@ -194,7 +195,7 @@ export default function AddEquipment() {
         // eslint-disable-next-line no-await-in-loop
         await deleteEquipmentPhoto(supabase, path);
       }
-      setError(err.message || t("addEquipment.saveFailed"));
+      setError(errorText(err, t, "addEquipment.saveFailed"));
       return;
     }
 

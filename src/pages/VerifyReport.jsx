@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Loader2, ShieldCheck, ShieldX, ShieldAlert, QrCode } from "lucide-react";
 import { verifyReportCode, getVerificationConfig } from "../lib/trustClient.js";
 import { supabase } from "../lib/supabase.js";
+import { formatDate, formatDateTime } from "../lib/format.js";
 
 /**
  * VerifyReport — the public page behind the QR code on a printed report.
@@ -44,7 +45,10 @@ export default function VerifyReport() {
         }
         if (alive) setState({ loading: false, data, error: null, via });
       } catch (err) {
-        if (alive) setState({ loading: false, data: null, error: err?.message || "failed", via: null });
+        // `error` is a flag, not copy: the page renders its own translated
+        // "not found" panel, so the raw (English) message stays in the console.
+        console.warn("[agrirent] verify failed:", err?.message || err);
+        if (alive) setState({ loading: false, data: null, error: true, via: null });
       }
     })();
     return () => {
@@ -95,7 +99,7 @@ export default function VerifyReport() {
             </h2>
             <p className="mt-2 text-sm text-ink-2">
               {intact
-                ? t("trust.verifyIntactSub", { count: data.event_count, date: new Date(data.created_at).toLocaleDateString() })
+                ? t("trust.verifyIntactSub", { count: data.event_count, date: formatDate(data.created_at) })
                 : t("trust.verifyBrokenSub")}
             </p>
           </div>
@@ -108,10 +112,14 @@ export default function VerifyReport() {
             <Row
               label={t("trust.verifyAttestations")}
               value={(data.signers || []).length
-                ? data.signers.map((s) => `${s.role} · ${new Date(s.signed_at).toLocaleString()}`).join("  •  ")
+                // The role comes from the database as "owner"/"farmer" — an id, not
+                // copy. It has to be looked up, or a Hindi reader sees the English word.
+                ? data.signers
+                    .map((s) => `${t(`common.${s.role}`, s.role)} · ${formatDateTime(s.signed_at)}`)
+                    .join("  •  ")
                 : t("trust.noSignatures")}
             />
-            <Row label={t("trust.verifyFinalized")} value={data.finalized_at ? new Date(data.finalized_at).toLocaleString() : "—"} />
+            <Row label={t("trust.verifyFinalized")} value={formatDateTime(data.finalized_at)} />
             <Row label={t("trust.reportHash")} value={`${(data.report_hash || "").slice(0, 40)}…`} mono />
             <Row label={t("trust.verifyChainHead")} value={`${(data.chain_head || "").slice(0, 40)}…`} mono />
           </dl>

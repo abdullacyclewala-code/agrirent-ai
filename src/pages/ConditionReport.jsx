@@ -16,8 +16,11 @@ import {
   uploadSignature, logEvent,
 } from "../lib/reportDb.js";
 import { analyzeReport, verifyReportCode } from "../lib/trustClient.js";
+import { errorText } from "../lib/errors.js";
+import { translatedSummary } from "../lib/reportText.js";
 import { signedEvidenceUrls, slotById, REQUIRED_SLOTS } from "../lib/inspectionCapture.js";
 import { deriveVerificationState } from "../lib/trustFlow.js";
+import { formatDateTime } from "../lib/format.js";
 import { WEAR_AND_TEAR, POLICY } from "../lib/depositPolicy.js";
 import { equipmentTypeLabel } from "../lib/equipmentDisplay.js";
 import { supabase } from "../lib/supabase.js";
@@ -71,7 +74,7 @@ export default function ConditionReport() {
         verifyReportCode(detail.report.report_code).then((v) => v && setVerification(v));
       }
     } catch (err) {
-      setError(err?.message || t("trust.loadFailed"));
+      setError(errorText(err, t, "trust.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -135,7 +138,7 @@ export default function ConditionReport() {
       });
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.analysisFailed"));
+      setError(errorText(err, t, "trust.analysisFailed"));
     } finally {
       setBusy(false);
     }
@@ -183,7 +186,7 @@ export default function ConditionReport() {
       await updateReportAnalysis(report.id, { ...result, booking_id: booking.id, equipment_id: booking.equipment_id });
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.analysisFailed"));
+      setError(errorText(err, t, "trust.analysisFailed"));
     } finally {
       setBusy(false);
     }
@@ -217,7 +220,7 @@ export default function ConditionReport() {
       await setVerificationState(booking.id, state);
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.actionFailed"));
+      setError(errorText(err, t, "trust.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -244,7 +247,7 @@ export default function ConditionReport() {
       await setVerificationState(booking.id, "disputed");
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.actionFailed"));
+      setError(errorText(err, t, "trust.actionFailed"));
     } finally {
       setBusy(false);
     }
@@ -272,7 +275,7 @@ export default function ConditionReport() {
       setVerification((v) => ({ ...(v || {}), report_hash: hash, chain_intact: true }));
       await load();
     } catch (err) {
-      setError(err?.message || t("trust.signFailed"));
+      setError(errorText(err, t, "trust.signFailed"));
     } finally {
       setBusy(false);
     }
@@ -353,7 +356,14 @@ export default function ConditionReport() {
             </span>
           </div>
           <p className="text-sm text-ink-2">
-            {report.ai_summary?.text || analysis?.summary?.text || t("trust.aiNoSummary")}
+            {translatedSummary(t, {
+              aiSummary: report.ai_summary || analysis?.summary || null,
+              photos,
+              hourMeter: report.hour_meter,
+              // The backend's own English sentence stays as the fallback for
+              // reports analysed before this screen existed.
+              fallbackText: report.ai_summary?.text || analysis?.summary?.text || null,
+            }) || t("trust.aiNoSummary")}
           </p>
           {(report.ai_summary?.damage_found?.length || analysis?.summary?.damage_found?.length) ? (
             <ul className="mt-3 space-y-1">
@@ -437,7 +447,7 @@ export default function ConditionReport() {
               <figcaption className="space-y-1 p-2.5 text-[10px] text-mut">
                 <div className="font-semibold text-ink-2">{t(slotById(p.slot).titleKey, slotById(p.slot).fallbackTitle)}</div>
                 {p.captured_at_device && (
-                  <div className="flex items-center gap-1"><Clock size={9} /> {new Date(p.captured_at_device).toLocaleString()}</div>
+                  <div className="flex items-center gap-1"><Clock size={9} /> {formatDateTime(p.captured_at_device)}</div>
                 )}
                 {p.gps_lat != null ? (
                   <div className="flex items-center gap-1"><MapPin size={9} /> {p.gps_lat.toFixed(4)}, {p.gps_lng.toFixed(4)}</div>
@@ -473,7 +483,7 @@ export default function ConditionReport() {
                 <li key={s.id} className="flex items-start gap-2 text-ink-2">
                   <Check size={12} className="mt-0.5 shrink-0 text-sage" />
                   <span>
-                    <b>{s.role === "owner" ? t("common.owner") : t("common.farmer")}</b> — {new Date(s.signed_at).toLocaleString()}
+                    <b>{s.role === "owner" ? t("common.owner") : t("common.farmer")}</b> — {formatDateTime(s.signed_at)}
                     <div className="text-[11px] text-mut">“{s.statement_text}”</div>
                   </span>
                 </li>

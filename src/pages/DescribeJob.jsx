@@ -20,6 +20,7 @@ import {
   DEFAULT_SEARCH_RADIUS_KM,
   RADIUS_OPTIONS_KM,
 } from "../lib/geo.js";
+import { errorText } from "../lib/errors.js";
 
 const crops = taxonomy.crops;
 const operations = taxonomy.operations;
@@ -438,7 +439,7 @@ export default function DescribeJob() {
       setTimeout(() => navigate("/recommendations"), 1800);
     } catch (err) {
       setScanning(false);
-      setSubmitError(err.message || t("describeJob.submitError"));
+      setSubmitError(errorText(err, t, "describeJob.submitError"));
     }
   };
 
