@@ -273,7 +273,8 @@ story += [
         ["Deposit", "Dispute a claim", "₹0 deducted, disputed amount held; neither party can unilaterally take money"],
         ["Verification", "With/AR-XXXXXXXX logged out", "“This report is intact”, with entries, signers and fingerprint. A wrong code says “not found”"],
         ["Privacy", "As a third account, open the report URL", "Sees nothing — RLS keeps evidence to the two parties"],
-        ["Languages", "Switch to " + DEVANAGARI, "Every new screen is translated (Hindi/Marathi copy is machine-drafted — worth a native-speaker read)"],
+        ["Languages", "Switch to " + DEVANAGARI + " on the report screen",
+         "Every screen follows the switch — headings, dates, statuses, buttons, error messages. The AI's own reading follows it too: press <b>Re-run the check</b> and the summary and damage notes come back in that language (its internal codes stay English on purpose). Hindi/Marathi copy is machine-drafted — worth a native-speaker read)."],
     ], [26 * mm, 72 * mm, 78 * mm]),
 ]
 
