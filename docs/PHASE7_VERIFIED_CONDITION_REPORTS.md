@@ -378,34 +378,51 @@ flow needs.
 - The `trust-live` suite creates and deletes real rows. Point it only at a
   project where that is acceptable, and never at production data you care about.
 
-### 9.5 A third layer of verification: the deployed endpoint, with a real photo
+### 9.5 A third layer of verification: the deployed endpoint, with real photos
 
-Unit tests mock the AI and integration tests stop at the database, so the one
-thing neither covers is the thing this project has actually been burned by
-before: **model names**. A probe run against the live Render service (real JWT,
-real bookkeeping, four real JPEGs, then cleanup) returned:
+Unit tests mock the AI and the integration test stops at the database, so neither
+covers the thing this project has actually been burned by before: **model names**.
+Two probes were run against the live Render service — real JWT, real booking, real
+JPEGs, then cleanup.
+
+*Probe 1 (synthetic fixtures, deliberately inconsistent)* — every honesty signal
+fired exactly as intended:
 
 ```
-HTTP 200 in 7.6s · ai_status=ok · ai_provider=gemini
-auth_checked=true · storage=service · 4/4 photos read by gemini
-flags: sha_mismatch, capture_clock_skew, watermark_unreadable, no_camera_exif, unilateral
-verdict: unverified
+HTTP 200 · ai_status=ok · ai_provider=gemini · auth_checked=true · storage=service
+flags: sha_mismatch, capture_clock_skew, watermark_unreadable, no_camera_exif, unilateral_report
 ```
 
-Every flag was correct for what was sent (a deliberately wrong client hash, a
-fabricated watermark, an EXIF-less photo, a single attestation, and a capture
-time that disagreed with the server's receipt). `/verification/config` on the
-live service reports `providers_configured: [gemini, groq]` and
-`storage_access: true`, so the full path — private bucket download, Pillow
-re-measurement, AI reading, signal pack, verdict — is live in production.
+(a deliberately wrong client hash, a fabricated watermark, an EXIF-less photo, a
+capture time disagreeing with the server's receipt, and only one attestation).
 
-The probe also caught a vocabulary drift that no test had: the backend emitted
+*Probe 2 (real photographs, one of them not machinery)* — the AI reading is real
+and restrained:
+
+```
+HTTP 200 in 2.4s (cached on the second run by image hash)
+ai_status=ok · ai_provider=gemini · 4/4 photos read
+summary: "4 photo(s) recorded; 4 pre-existing damage item(s) noted;
+          no new damage found against the handover photos."
+damage_found: body panel rust major 0.95 · dashboard panel rust major 0.95
+              cab frame crack major 0.90 · dashboard housing rust minor 0.80
+```
+
+The one photo that showed a car panel rather than a tractor came back
+`shows_equipment: false` with no damage invented — which is the whole point of the
+prompt's "only report what you can actually see, use low confidence instead of
+inventing detail". `/verification/config` on the live service reports
+`providers_configured: [gemini, groq]` and `storage_access: true`, so the full
+path — private-bucket download, Pillow re-measurement, AI reading, signal pack,
+verdict — is live in production, with no new vendor and no paid tier.
+
+Probe 1 also caught a vocabulary drift that no test had: the backend emitted
 `unilateral` while the UI knows only `unilateral_report` (and `missing_slots`
-vs. `missing_required_slots`). The UI would have shown a raw identifier to a
-farmer instead of a sentence. Both are fixed, the vocabulary is now declared
-once in `signals.py`, `_add()` refuses anything outside it, and a test compares
-it against `src/lib/depositPolicy.js`'s `FLAGS` so the two languages cannot
-drift again silently.
+vs. `missing_required_slots`). A farmer would have seen a raw identifier instead
+of a sentence. Both are fixed, the vocabulary is now declared once in
+`signals.py`, `_add()` refuses anything outside it, and a test compares it
+against `src/lib/depositPolicy.js`'s `FLAGS` so the two languages cannot drift
+again silently.
 
 ### 9.6 Running everything
 
