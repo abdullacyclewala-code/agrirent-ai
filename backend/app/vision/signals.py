@@ -251,7 +251,36 @@ def haversine_km(lat1: Optional[float], lng1: Optional[float],
 # The signal pack
 # ---------------------------------------------------------------------------
 
+# The shared flag vocabulary. This list and src/lib/depositPolicy.js's FLAGS
+# object are the same contract seen from two languages: the frontend turns these
+# codes into sentences (i18n `trust.flag_*`), sorts fatal ones into the verdict,
+# and filters lists by them. Emitting a code that is not in here means the UI
+# silently shows a raw identifier to a farmer — which is exactly the bug an
+# earlier pass fixed for check names ("sha256_match" leaking out as a flag).
+# backend/tests/test_vision.py fails if the two lists ever drift apart.
+FLAG_VOCABULARY = frozenset({
+    "sha_mismatch",
+    "duplicate_photo",
+    "photo_reused_across_bookings",
+    "gps_far_from_equipment",
+    "gps_missing",
+    "gps_disagrees_with_other_party",
+    "capture_clock_skew",
+    "watermark_unreadable",
+    "watermark_mismatch",
+    "low_photo_quality",
+    "missing_required_slots",
+    "no_camera_exif",
+    "unilateral_report",
+    "ai_unavailable",
+    "meter_delta_implausible",
+})
+
+
 def _add(flags: list[str], code: str) -> None:
+    if code not in FLAG_VOCABULARY:  # a typo would be invisible in the UI
+        logger.warning("[signals] refusing to emit unknown flag %r", code)
+        return
     if code not in flags:
         flags.append(code)
 
@@ -464,10 +493,10 @@ def build_report_signals(photo_results: list[dict[str, Any]], *,
     present_slots = {r.get("slot") for r in photo_results}
     missing = [s for s in required_slots if s not in present_slots]
     if missing:
-        _add(flags, "missing_slots")
+        _add(flags, "missing_required_slots")
 
     if signed_by == 0:
-        _add(flags, "unilateral")
+        _add(flags, "unilateral_report")
     if ai_status in ("unavailable", "disabled"):
         _add(flags, "ai_unavailable")
 

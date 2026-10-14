@@ -210,7 +210,7 @@ def test_missing_slots_and_unilateral_are_flagged():
         required_slots=["full_left", "full_right", "meter", "work_area"],
         signed_by=1, chain_intact=True, ai_status="unavailable",
     )
-    assert "missing_slots" in pack["flags"]
+    assert "missing_required_slots" in pack["flags"]
     assert "ai_unavailable" in pack["flags"]
     assert set(pack["missing_slots"]) == {"full_left", "full_right", "work_area"}
 
@@ -442,3 +442,58 @@ def test_analysis_cache_avoids_paying_twice(monkeypatch):
     first = calls["n"]
     analyze_mod.run_analysis(payload, _StubREST())
     assert calls["n"] == first, "the second run must hit the cache, not the provider"
+
+
+# ---------------------------------------------------------------------------
+# The flag vocabulary is a contract between two languages
+# ---------------------------------------------------------------------------
+
+def test_flag_vocabulary_matches_the_frontend_exactly():
+    """Every flag the backend can emit must be one the UI knows how to explain.
+
+    src/lib/depositPolicy.js's FLAGS object is what turns a code into a sentence
+    (`trust.flag_*` in en/hi/mr) and what decides which flags are fatal. If the
+    backend invents a code, a farmer sees a raw identifier like
+    "watermark_unreadable" instead of a reason — the same class of bug as a
+    check name leaking out as a flag. Both files are read here, so drift fails
+    the build rather than the user.
+    """
+    import re
+    from pathlib import Path
+
+    from app.vision.signals import FLAG_VOCABULARY
+
+    policy = Path(__file__).resolve().parents[2] / "src" / "lib" / "depositPolicy.js"
+    source = policy.read_text(encoding="utf-8")
+    block = source[source.index("export const FLAGS"):]
+    block = block[: block.index("};")]
+    frontend = set(re.findall(r'"([a-z_]+)"', block))
+
+    assert frontend, "could not parse FLAGS out of depositPolicy.js"
+    assert frontend == set(FLAG_VOCABULARY), {
+        "only in the backend": sorted(set(FLAG_VOCABULARY) - frontend),
+        "only in the frontend": sorted(frontend - set(FLAG_VOCABULARY)),
+    }
+
+
+def test_unknown_flags_are_dropped_rather_than_shown_to_a_farmer():
+    from app.vision.signals import _add
+
+    flags: list[str] = []
+    _add(flags, "watermark_unreadable")     # in the vocabulary
+    _add(flags, "definitely_not_a_flag")    # a typo
+    assert flags == ["watermark_unreadable"]
+
+
+def test_unilateral_and_missing_slots_use_the_shared_names():
+    """These two were caught drifting by the live integration probe — the
+    backend said "unilateral" while the UI only knew "unilateral_report"."""
+    from app.vision.signals import build_report_signals
+
+    signals = build_report_signals(
+        [], required_slots=["full_left", "full_right"], signed_by=0,
+        chain_intact=True, ai_status="ok",
+    )
+    assert "unilateral_report" in signals["flags"]
+    assert "unilateral" not in signals["flags"]
+    assert "missing_required_slots" in signals["flags"]

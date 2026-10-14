@@ -281,7 +281,7 @@ Where the two differ, the code and this section win.
 | Screens | `src/pages/ConditionReport.jsx`, `src/pages/DamageClaim.jsx`, `src/pages/VerifyReport.jsx` |
 | Components | `src/components/inspection/{GuidedCapture,SignaturePad,ReportBits,TrustPanel,EquipmentCondition}.jsx` |
 | Backend | `backend/app/vision/{signals,providers,analyze,routes}.py`, registered in `backend/app/main.py` (`/verification/*`, health reports `phase: 7`) |
-| Tests | `scripts/test-trust.mjs` (39 assertions, zero deps, pure logic), `backend/tests/test_vision.py` (28 tests, AI always mocked), `scripts/test-trust-live.mjs` (**43 assertions against the real database**, real users, real RLS, self-purging), `scripts/make-fixtures.py` (synthetic before/after evidence) |
+| Tests | `scripts/test-trust.mjs` (39 assertions, zero deps, pure logic), `backend/tests/test_vision.py` (31 tests, AI always mocked), `scripts/test-trust-live.mjs` (**43 assertions against the real database**, real users, real RLS, self-purging), `scripts/make-fixtures.py` (synthetic before/after evidence) |
 | Backend test/live helpers | `scripts/env-shim-loader.mjs` (lets plain node run the Vite-style `src/` modules so the live test exercises the shipped code, not a copy) |
 
 ### 9.2 Deviations from the spec, and why
@@ -378,12 +378,41 @@ flow needs.
 - The `trust-live` suite creates and deletes real rows. Point it only at a
   project where that is acceptable, and never at production data you care about.
 
-### 9.5 Running everything
+### 9.5 A third layer of verification: the deployed endpoint, with a real photo
+
+Unit tests mock the AI and integration tests stop at the database, so the one
+thing neither covers is the thing this project has actually been burned by
+before: **model names**. A probe run against the live Render service (real JWT,
+real bookkeeping, four real JPEGs, then cleanup) returned:
+
+```
+HTTP 200 in 7.6s · ai_status=ok · ai_provider=gemini
+auth_checked=true · storage=service · 4/4 photos read by gemini
+flags: sha_mismatch, capture_clock_skew, watermark_unreadable, no_camera_exif, unilateral
+verdict: unverified
+```
+
+Every flag was correct for what was sent (a deliberately wrong client hash, a
+fabricated watermark, an EXIF-less photo, a single attestation, and a capture
+time that disagreed with the server's receipt). `/verification/config` on the
+live service reports `providers_configured: [gemini, groq]` and
+`storage_access: true`, so the full path — private bucket download, Pillow
+re-measurement, AI reading, signal pack, verdict — is live in production.
+
+The probe also caught a vocabulary drift that no test had: the backend emitted
+`unilateral` while the UI knows only `unilateral_report` (and `missing_slots`
+vs. `missing_required_slots`). The UI would have shown a raw identifier to a
+farmer instead of a sentence. Both are fixed, the vocabulary is now declared
+once in `signals.py`, `_add()` refuses anything outside it, and a test compares
+it against `src/lib/depositPolicy.js`'s `FLAGS` so the two languages cannot
+drift again silently.
+
+### 9.6 Running everything
 
 ```bash
 # pure logic (no network, no credentials)
 python3 scripts/make-fixtures.py && node scripts/test-trust.mjs     # 39 assertions
-cd backend && python3 -m pytest tests/ -q                           # 28 tests
+cd backend && python3 -m pytest tests/ -q                           # 31 tests
 cd .. && npx vite build && npx oxlint                                # build + lint
 
 # live integration (creates + purges its own rows; see the script header)
