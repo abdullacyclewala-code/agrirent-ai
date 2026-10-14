@@ -39,6 +39,13 @@ export const cropEntry = findIn(taxonomy.crops);
 export const operationEntry = findIn(taxonomy.operations);
 export const equipmentTypeEntry = findIn(taxonomy.equipment_types);
 
+/** Every equipment-type id in the taxonomy, in display order (Tractor first).
+ *  Pages that render a type filter/dropdown use this instead of importing the
+ *  taxonomy JSON directly, so the list has one owner. */
+export const EQUIPMENT_TYPE_IDS = taxonomy.equipment_types
+  .filter((row) => row && row.id && !String(row.id).startsWith("_"))
+  .map((row) => row.id);
+
 export function equipmentTypeLabel(typeId) {
   return pick(equipmentTypeEntry(typeId), typeId);
 }

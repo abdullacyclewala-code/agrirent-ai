@@ -1,6 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Sparkles, ClipboardList, UserRound, Sprout } from "lucide-react";
+import { LayoutDashboard, Sparkles, ClipboardList, UserRound, Sprout, Store } from "lucide-react";
 import RoleToggle from "../ui/RoleToggle.jsx";
 import LanguageSwitcher from "../ui/LanguageSwitcher.jsx";
 
@@ -10,6 +10,7 @@ export default function NavBar() {
   const navItems = [
     { to: "/", label: t("nav.dashboard"), icon: LayoutDashboard, end: true },
     { to: "/describe-job", label: t("nav.findEquipment"), icon: Sparkles },
+    { to: "/marketplace", label: t("nav.marketplace"), icon: Store },
     { to: "/bookings", label: t("nav.bookings"), icon: ClipboardList },
     { to: "/profile", label: t("nav.profile"), icon: UserRound },
   ];

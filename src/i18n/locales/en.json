@@ -14,7 +14,8 @@
     "findEquipment": "Find Equipment",
     "bookings": "Bookings",
     "profile": "Profile",
-    "brand": "AgriRent AI"
+    "brand": "AgriRent AI",
+    "marketplace": "Marketplace"
   },
   "auth": {
     "welcomeBack": "Welcome back",
@@ -640,5 +641,39 @@
     "recheckHint": "Uses the photos already stored — nothing to retake. Worth doing if the automatic reading didn't come back the first time (the free server can be asleep).",
     "verifyUrlLabel": "Anyone can verify this report at",
     "orSignByHand": "You can also sign by hand (optional — the statement above is what is recorded)."
+  },
+  "marketplace": {
+    "eyebrow": "Browse equipment",
+    "title": "Marketplace",
+    "subtitle": "Every available machine around you — filter by type, price and distance, or search by name.",
+    "useMyLocation": "Show what's near me",
+    "usingSavedLocation": "Using the location saved on your profile",
+    "usingLiveLocation": "Using your current location",
+    "locationFailed": "Couldn't get your location — showing everything instead. You can still browse and search.",
+    "showingCount": "Showing {{shown}} of {{total}}",
+    "searchPlaceholder": "Search by name, type or village…",
+    "filters": "Filters",
+    "clearFilters": "Clear filters",
+    "filterType": "Machine type",
+    "anyType": "Any type",
+    "filterMaxPrice": "Max price (₹)",
+    "maxPricePlaceholder": "e.g. 800",
+    "pricePerUnitNote": "Compared against the listed price per hour or per day as the owner set it.",
+    "filterDistance": "Distance",
+    "withinKm": "Within {{km}} km",
+    "distanceNeedsLocation": "Add your location to filter by distance",
+    "sortBy": "Sort by",
+    "sortDistance": "Nearest first",
+    "sortPriceAsc": "Lowest price first",
+    "sortPriceDesc": "Highest price first",
+    "availableOnly": "Only available now",
+    "available": "Available",
+    "paused": "Paused by owner",
+    "owner": "Owner: {{name}}",
+    "view": "View",
+    "noResults": "No machines match these filters",
+    "noResultsHint": "Widen the distance, raise the price limit, or clear the search box.",
+    "widenSearch": "Search a wider area",
+    "loadFailed": "Couldn't load the marketplace. Pull to refresh or try again in a moment."
   }
 }

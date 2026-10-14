@@ -7,6 +7,7 @@ import NavBar from "./components/layout/NavBar.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
 import DescribeJob from "./pages/DescribeJob.jsx";
 import Recommendations from "./pages/Recommendations.jsx";
+import Marketplace from "./pages/Marketplace.jsx";
 import EquipmentDetails from "./pages/EquipmentDetails.jsx";
 import AddEquipment from "./pages/AddEquipment.jsx";
 import Booking from "./pages/Booking.jsx";
@@ -98,6 +99,8 @@ export default function App() {
           <Route path="/" element={<ProtectedRoute><PageTransition><Dashboard /></PageTransition></ProtectedRoute>} />
           <Route path="/describe-job" element={<ProtectedRoute><PageTransition><DescribeJob /></PageTransition></ProtectedRoute>} />
           <Route path="/recommendations" element={<ProtectedRoute><PageTransition><Recommendations /></PageTransition></ProtectedRoute>} />
+          {/* Browse-and-filter, as opposed to the wizard's "match me to a job". */}
+          <Route path="/marketplace" element={<ProtectedRoute><PageTransition><Marketplace /></PageTransition></ProtectedRoute>} />
           <Route path="/equipment/:id" element={<ProtectedRoute><PageTransition><EquipmentDetails /></PageTransition></ProtectedRoute>} />
           <Route path="/equipment/new" element={<ProtectedRoute><PageTransition><AddEquipment /></PageTransition></ProtectedRoute>} />
           <Route path="/equipment/:id/edit" element={<ProtectedRoute><PageTransition><AddEquipment /></PageTransition></ProtectedRoute>} />
