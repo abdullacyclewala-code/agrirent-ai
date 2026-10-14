@@ -16,6 +16,20 @@ matching flow. Frontend in React + Vite + Tailwind, backed by Supabase
 - **Supabase + Firebase** — auth, database, realtime booking updates, push notifications
 - **Lucide icons**
 
+### Verified condition reports (Phase 7)
+
+Every rental is bracketed by two signed condition reports — one at handover, one
+at return — so "it was already like that" becomes a question with an answer, for
+both sides. The owner or renter taps through four guided photos; each one is
+stamped in the pixels with the report code, time and location, fingerprinted
+(sha256 + perceptual hash) and quality-checked on the device. An AI reading
+compares handover with return and flags anything that changed — it only ever
+flags, a person decides. Both parties sign separately, wear and tear is
+enumerated and never charged, and a disputed claim is held rather than deducted.
+The whole record is append-only with a hash chain computed inside Postgres, so
+the `/verify/:code` page can be checked by a third party — a bank, an insurer, a
+court — without an account. See `docs/PHASE7_VERIFIED_CONDITION_REPORTS.md`.
+
 ### Pages / routes
 
 | Route | Screen |
@@ -27,6 +41,9 @@ matching flow. Frontend in React + Vite + Tailwind, backed by Supabase
 | `/booking/:id` | Booking confirmation + live-style tracking timeline |
 | `/bookings` | All bookings (farmer + owner), realtime updates |
 | `/equipment/new` | List equipment (owner mode) |
+| `/report/:id` | Condition report — guided capture, AI reading, before/after comparison, both parties' signatures |
+| `/claim/:bookingId` | Damage claim and deposit — file, answer, dispute, settle |
+| `/verify/:code` | Public verification page (no login) — anyone holding a report code can check it is intact |
 | `/profile` | Profile — overview, listings (if renting out equipment), settings |
 
 ## Running it locally
@@ -101,4 +118,21 @@ primitives in `src/index.css`.
 - **Frontend:** static site after `npm run build` (output in `dist/`), deployed on
   Vercel — pushing to `main` autodeploys (`vercel.json` handles SPA rewrites).
 - **Backend:** `backend/` deploys on Render via `backend/render.yaml` — pushing to
-  `main` autodeploys the FastAPI service.
+  `main` autodeploys the FastAPI service. `GET /verification/config` reports which
+  vision providers and which storage mode a deployment actually has, which is the
+  quickest way to tell what the trust layer can do in that environment.
+- **Database:** migrations live in `supabase/migrations/` (Phase 7's two files are
+  applied; `supabase/schema.sql` is the from-scratch mirror).
+
+### Tests
+
+```bash
+python3 scripts/make-fixtures.py && node scripts/test-trust.mjs   # trust logic
+cd backend && python3 -m pytest tests/ -q                          # vision backend
+SUPABASE_URL=... ANON_KEY=... SERVICE_KEY=... node scripts/test-trust-live.mjs
+```
+
+The last one is a live integration test: it runs the shipped modules against the
+real database as real signed-in users (real row-level security, real triggers,
+the real hash chain), creating and then purging its own users, booking and
+evidence.
