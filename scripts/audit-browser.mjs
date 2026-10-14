@@ -256,6 +256,35 @@ if (switchedOnBooking && /[\u0900-\u097F]/.test(bookingHi) && bookingHi !== book
 }
 await switchLang("en");
 
+// The dashboard's stat tiles are the one place that briefly held *translated*
+// text in React state (so the "latest booking" value used to stay in the old
+// language after a switch while the rest of the screen translated). Reading the
+// tile again in Hindi is the regression test for that fix: StatTile renders the
+// value div directly above its label div.
+async function statTileValue(labelText) {
+  return page.evaluate((label) => {
+    const el = [...document.querySelectorAll("div")].find((d) => d.children.length === 0 && d.textContent.trim() === label);
+    return el?.previousElementSibling?.textContent?.trim() ?? null;
+  }, labelText);
+}
+await goto("/", { waitFor: "main" });
+await page.waitForTimeout(1800);   // the stat fetch lands after the shell paints
+const tileEn = await statTileValue("Latest booking");
+const switchedOnDash = await switchLang("hi");
+await page.waitForTimeout(900);
+const tileHi = await statTileValue("ताज़ा बुकिंग");
+if (tileEn && tileHi) {
+  if (/[A-Za-z]/.test(tileEn)) {
+    if (!/[A-Za-z]/.test(tileHi)) ok("the dashboard stat tile translates too (the bug this pass fixed)", `"${tileEn}" → "${tileHi}"`);
+    else no("the dashboard stat tile translates too", `still Latin after the switch: "${tileHi}"`);
+  } else {
+    warn("dashboard tile check had nothing to translate (no status shown)", `"${tileEn}" → "${tileHi}"`);
+  }
+} else {
+  no("the dashboard's latest-booking tile could be read", `en=${JSON.stringify(tileEn)} hi=${JSON.stringify(tileHi)} clicked=${switchedOnDash}`);
+}
+await switchLang("en");
+
 // ---------------------------------------------------------------------------
 section("6. console hygiene across the whole walk");
 // ---------------------------------------------------------------------------
