@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import {
-  ArrowLeft, Loader2, Printer, Check, AlertTriangle, MapPin, Clock, Cpu, FileText, Sparkles,
+  ArrowLeft, Loader2, Printer, Check, AlertTriangle, MapPin, Clock, Cpu, FileText, Sparkles, RefreshCw,
 } from "lucide-react";
 import { Button, SectionLabel } from "../components/ui/Primitives.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -141,10 +141,77 @@ export default function ConditionReport() {
     }
   }, [booking, equipment, handover, isReturn, knownDamage, load, report, t]);
 
+  /** Re-run the reading on evidence that is already stored.
+   *
+   * Worth having for a blunt reason: Render's free tier sleeps, and if the
+   * first analysis call hit a cold start the report was stuck with the
+   * deterministic signals for ever — the photos are on the server, the AI just
+   * wasn't awake. A draft can be re-checked as many times as you like; a signed
+   * report cannot, because its reading is frozen with the evidence. */
+  const reanalyze = useCallback(async () => {
+    if (!booking || !photos.length) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const shaped = photos.map((p) => ({
+        slot: p.slot,
+        storage_path: p.storage_path,
+        sha256: p.sha256,
+        dhash: p.dhash,
+        captured_at_device: p.captured_at_device,
+        exif: p.exif,
+        gps: p.gps_lat != null ? { lat: p.gps_lat, lng: p.gps_lng } : null,
+        watermark_text: p.watermark_text,
+        quality: p.quality,
+        damage_labels: p.damage_labels,
+      }));
+      const beforePhotos = [];
+      if (isReturn && handover) {
+        const { data } = await supabase
+          .from("report_photos")
+          .select("slot, storage_path, dhash, ai, watermark_text, captured_at_device")
+          .eq("report_id", handover.id);
+        for (const p of data || []) beforePhotos.push({ ...p, history: [] });
+      }
+      const result = await analyzeReport({
+        report, booking, equipment, photos: shaped, beforePhotos,
+        knownDamage: knownDamage.map((d) => ({ part: d.part, kind: d.kind, severity: d.severity, notes: d.notes })),
+        signedBy: signatures.length,
+        chainIntact: verification?.chain_intact ?? true,
+      });
+      setAnalysis(result);
+      await updateReportAnalysis(report.id, { ...result, booking_id: booking.id, equipment_id: booking.equipment_id });
+      await load();
+    } catch (err) {
+      setError(err?.message || t("trust.analysisFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }, [booking, equipment, handover, isReturn, knownDamage, photos, report, signatures.length, t, verification, load]);
+
+  /**
+   * The counterparty's act, in ONE tap.
+   *
+   * They are not filing anything — they are accepting or rejecting someone
+   * else's record. Asking them to draw a signature first (and then answer the
+   * actual question) was two steps for one decision. Agreeing now records the
+   * response AND their own attestation (statement + timestamp, the part that
+   * binds) in a single call; signing by hand stays available underneath for
+   * anyone who wants a mark on the page.
+   */
   const countersign = useCallback(async () => {
     setBusy(true);
+    setError(null);
     try {
       await respondToReport({ report, response: "agreed", userId: user.id, role });
+      await signReport({
+        report, userId: user.id, role,
+        statement: report.kind === "handover"
+          ? t("trust.statementHandover", { code: report.report_code })
+          : t("trust.statementReturn", { code: report.report_code }),
+        signaturePngPath: null, contentHash: report.report_hash || null,
+      });
+      await finalizeReport(report.id);
       const reports = await getReportsForBooking(booking.id);
       const state = deriveVerificationState({ booking, reports, claims: [] });
       await setVerificationState(booking.id, state);
@@ -309,6 +376,15 @@ export default function ConditionReport() {
             )}
             <span>{t("trust.aiDisclaimer")}</span>
           </div>
+          {isDraft && iAmAuthor && (
+            <div className="mt-3 border-t border-line pt-3">
+              <Button variant="ghost" className="!py-2 text-xs" onClick={reanalyze} disabled={busy}>
+                {busy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+                {t("trust.recheck")}
+              </Button>
+              <p className="mt-1 text-[11px] text-mut2">{t("trust.recheckHint")}</p>
+            </div>
+          )}
         </motion.section>
       )}
 
@@ -412,11 +488,26 @@ export default function ConditionReport() {
         </div>
       </section>
 
+      {/* ---------- the counterparty's decision ---------- */}
+      {!iSigned && !iAmAuthor && otherSigned && report.status !== "cancelled" && (
+        <section className="mb-6 flex flex-wrap gap-3">
+          <Button onClick={countersign} disabled={busy}>
+            <Check size={15} /> {t("trust.agreeButton")}
+          </Button>
+          <Button variant="ghost" onClick={disagree} disabled={busy}>
+            <AlertTriangle size={15} /> {t("trust.disagreeButton")}
+          </Button>
+        </section>
+      )}
+
       {/* ---------- sign ---------- */}
       {!iSigned && !needsCapture && report.status !== "cancelled" && (
         <section className="mb-6">
           {!iAmAuthor && !otherSigned && (
             <p className="mb-3 text-sm text-mut">{t("trust.otherPartyNotSigned")}</p>
+          )}
+          {!iAmAuthor && otherSigned && (
+            <p className="mb-2 text-xs text-mut2">{t("trust.orSignByHand")}</p>
           )}
           <SignaturePad statement={statement} onSigned={doSign} busy={busy} signLabel={iAmAuthor ? t("trust.signFile") : t("trust.signAgree")} />
         </section>
@@ -435,15 +526,17 @@ export default function ConditionReport() {
         </section>
       )}
 
-      {!iSigned && iAmAuthor === false && otherSigned && (
-        <section className="mb-6 flex flex-wrap gap-3">
-          <Button onClick={countersign} disabled={busy}>
-            <Check size={15} /> {t("trust.agreeButton")}
-          </Button>
-          <Button variant="ghost" onClick={disagree} disabled={busy}>
-            <AlertTriangle size={15} /> {t("trust.disagreeButton")}
-          </Button>
-        </section>
+      {/* Printed on the page, and therefore on the paper: a third party can
+          check this report without an account. (No QR image yet — the code and
+          the URL are the honest version of the same thing; a QR encoder is a
+          dependency this feature didn't need.) */}
+      {report.report_code && (
+        <p className="mb-4 rounded-2xl border border-line bg-paper px-4 py-3 text-center text-[11px] text-mut">
+          {t("trust.verifyUrlLabel")}{" "}
+          <span className="break-all font-mono text-[11px] text-ink-2">
+            {typeof window !== "undefined" ? window.location.origin : ""}/verify/{report.report_code}
+          </span>
+        </p>
       )}
 
       <div className="flex flex-wrap gap-3 border-t border-line pt-5">

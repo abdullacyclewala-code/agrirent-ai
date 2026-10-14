@@ -212,11 +212,11 @@ server-side PDF stack on Render's free tier):
 - Every photo, timestamped and geolocated, in a before/after slider.
 - AI findings, quality scores, and every honesty signal with its verdict.
 - Both attestations with signature images, names, IST timestamps.
-- **Verification code (`report_hash` prefix) + QR** → public
+- **Verification code (`report_hash` prefix) + a URL you can type** → public
   `/verify/<hash>` page → *"This report is intact. Not altered since signing."*
   recomputed live from the hash chain.
 
-That QR is the answer to "who do I show this to?" — an insurer, a bank, a
+That URL is the answer to "who do I show this to?" — an insurer, a bank, a
 village elder, a lawyer, a court. It is also why the hash chain is not
 decoration: it is the difference between a screenshot and a record.
 
@@ -368,6 +368,14 @@ flow needs.
 - The claim window and the "silence is not agreement" rule are enforced lazily
   (evaluated when a party opens the booking), matching §4.5 — there is no cron
   on Render's free tier.
+- **No persistent offline queue.** A failed upload keeps the photos in the page
+  and offers a retry, but a reload during a signal outage loses them (the report
+  stays a dated draft, so the gap is visible rather than silent). An IndexedDB
+  queue that flushes on reconnect is a genuine gap for rural use — worth doing,
+  not done. An earlier draft of this document described it as built; it wasn't.
+- **No QR code on the printed report.** The printed page carries the report code
+  and the verification URL as text, which is the same thing typed by hand. A QR
+  would need an encoder dependency.
 - Payment is still off-platform. This phase records the settlement decision; it
   cannot transfer money, and it says so on-screen.
 - **Account deletion / data purge needs the SQL hatch** (migration 7b) because
@@ -424,7 +432,14 @@ of a sentence. Both are fixed, the vocabulary is now declared once in
 against `src/lib/depositPolicy.js`'s `FLAGS` so the two languages cannot drift
 again silently.
 
-### 9.6 Running everything
+### 9.6 Testing it by hand
+
+`docs/PHASE7_MANUAL_TEST_PLAN.md` — a step-by-step script for a human on two
+devices: what to tap, what should appear, what would count as a bug, and what to
+send back if it fails. It also lists what cannot be tested by hand (the 24-hour
+claim window, the append-only purge) and why.
+
+### 9.7 Running everything
 
 ```bash
 # pure logic (no network, no credentials)

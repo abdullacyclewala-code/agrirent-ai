@@ -124,6 +124,12 @@ primitives in `src/index.css`.
 - **Database:** migrations live in `supabase/migrations/` (Phase 7's two files are
   applied; `supabase/schema.sql` is the from-scratch mirror).
 
+### Testing it by hand
+
+`docs/PHASE7_MANUAL_TEST_PLAN.md` is the 30–40 minute two-person script for the
+condition-report flow: handover, return, deposit release, a disputed claim, the
+public verification page, and the things that should not break.
+
 ### Tests
 
 ```bash

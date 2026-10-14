@@ -269,6 +269,22 @@ export async function signReport({ report, userId, role, statement, signaturePng
     .select("id, role, signed_at")
     .single();
   if (error) throw new Error(error.message);
+
+  // The moment both parties have signed, the report is no longer one-sided.
+  // Found by review, not by a test: `unilateral` was being cleared only by the
+  // separate "this is correct" action, so a fully co-signed report could still
+  // be labelled "One-sided" on the booking page and in the public record. The
+  // explicit agree/disagree act stays separate and stronger — it is recorded in
+  // `renter_response`, which signing deliberately does NOT touch.
+  const { data: sigs } = await supabase
+    .from("report_signatures")
+    .select("role")
+    .eq("report_id", report.id);
+  if (new Set((sigs || []).map((row) => row.role)).size >= 2) {
+    await supabase.from("condition_reports").update({ unilateral: false })
+      .eq("id", report.id).eq("unilateral", true);
+  }
+
   await logEvent(report.id, role === "owner" ? "owner_signed" : "farmer_signed",
                  { statement_version: POLICY_VERSION }, role, report.booking_id);
   return data;

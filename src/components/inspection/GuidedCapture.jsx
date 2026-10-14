@@ -234,7 +234,13 @@ export default function GuidedCapture({ booking, report, role, userId, equipment
         })}
       </div>
 
-      {/* damage-on-arrival chips: one tap, no typing */}
+      {/* Damage-on-arrival chips: one tap, no typing. Handover ONLY.
+          On a return report this question would be self-serving — the person
+          returning the machine is exactly the person who benefits from calling
+          new damage "already there". At return, the comparison against the
+          handover photos is what settles it; at handover, this is what protects
+          the renter. */}
+      {report.kind === "handover" && (
       <div className="mt-4">
         <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-mut">{t("trust.existingDamageTitle")}</div>
         <div className="flex flex-wrap gap-2">
@@ -259,6 +265,7 @@ export default function GuidedCapture({ booking, report, role, userId, equipment
         </div>
         <p className="mt-2 text-[11px] text-mut2">{t("trust.existingDamageHint")}</p>
       </div>
+      )}
 
       {error && <p className="mt-3 text-sm text-accent">{error}</p>}
       {progressText && (

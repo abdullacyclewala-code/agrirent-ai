@@ -635,6 +635,10 @@
     "estimateRemove": "Remove",
     "estimateWhy": "A claim of ₹2,000 or more needs the estimate on record — this is the rule that stops a number being argued about later.",
     "estimateView": "View the estimate",
-    "estimateUploadFailed": "The estimate photo couldn't be saved. Please try again."
+    "estimateUploadFailed": "The estimate photo couldn't be saved. Please try again.",
+    "recheck": "Re-run the check",
+    "recheckHint": "Uses the photos already stored — nothing to retake. Worth doing if the automatic reading didn't come back the first time (the free server can be asleep).",
+    "verifyUrlLabel": "Anyone can verify this report at",
+    "orSignByHand": "You can also sign by hand (optional — the statement above is what is recorded)."
   }
 }
