@@ -89,8 +89,9 @@ if (farmerId) {
   const ready = (bookings || []).find((b) => b.status === "Confirmed" || b.status === "In Use");
   if (!ready) no("no Confirmed/In Use booking for the renter — make one before the demo, or book live on stage");
   else {
-    ok(`booking #${ready.id} (${ready.equipment?.name}) — ${ready.status}, ${ready.start_date} → ${ready.end_date}`);
-    console.log(`     → open https://agrirent-ai.vercel.app/booking/${ready.id} as ${FARMER_EMAIL}`);
+    const rentalLabel = `${ready.equipment?.name || "Equipment"} (${ready.start_date} → ${ready.end_date})`;
+    ok(`walkthrough rental: ${rentalLabel} — ${ready.status}`);
+    console.log(`     → open Bookings and select ${rentalLabel} as ${FARMER_EMAIL}`);
     const { count } = await farmer
       .from("condition_reports").select("id", { count: "exact", head: true }).eq("booking_id", ready.id);
     if (count) wr(`this booking already has ${count} report(s) — use a fresh one for a clean handover walkthrough`);
