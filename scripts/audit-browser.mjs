@@ -23,6 +23,7 @@ import { chromium } from "playwright";
 
 const BASE = (process.argv[2] || process.env.BASE_URL || "https://agrirent-ai.vercel.app").replace(/\/+$/, "");
 const DEMO = { email: process.env.FARMER_EMAIL || "menhdi@gmail.com", password: process.env.DEMO_PASSWORD || "12345678" };
+const DEMO_REPORT_CODE = process.env.DEMO_REPORT_CODE || "AR-91BBDC1E";
 
 let passed = 0, failed = 0, warned = 0;
 const problems = [];
@@ -111,6 +112,21 @@ jsErrors.length = 0;
   if (res?.status() < 400 && honest) ok("/verify/<bogus> reports honestly that nothing was found", `"${text.split("\n").slice(1, 3).join(" ").slice(0, 60)}"`);
   else no("/verify/<bogus> honesty", `HTTP ${res?.status()} · honest=${honest} · "${text.slice(0, 120)}"`);
   if (jsErrors.length) no("/verify runs clean", jsErrors[0]);
+}
+jsErrors.length = 0;
+{
+  // Chain integrity alone does not mean a draft is a verified condition report.
+  const res = await goto(`/verify/${DEMO_REPORT_CODE}`, { waitFor: "h1, h2" });
+  await page.waitForFunction(() => /not signed yet/i.test(document.body.innerText), null, { timeout: 20000 }).catch(() => {});
+  const text = await bodyText();
+  const explicitDraft = /record history is intact/i.test(text)
+    && /not been finalized/i.test(text)
+    && /not a verified condition report/i.test(text)
+    && /not verified/i.test(text)
+    && /not signed yet/i.test(text);
+  if (res?.status() < 400 && explicitDraft) ok("public verifier separates intact event history from an unsigned, unverified draft", DEMO_REPORT_CODE);
+  else no("public verifier labels an unfinalized draft honestly", `HTTP ${res?.status()} · explicit=${explicitDraft} · "${text.slice(0, 180)}"`);
+  if (jsErrors.length) no("draft verification runs clean", jsErrors[0]);
 }
 // a protected route must redirect to /auth when signed out
 await goto("/bookings");

@@ -67,6 +67,10 @@ export default function VerifyReport() {
   const { data } = state;
   const found = data?.found === true;
   const intact = data?.chain_intact === true;
+  const integrityCopy = data?.finalized_at ? "trust.verifyIntactSub" : "trust.verifyIntactDraftSub";
+  const integrityCopyOptions = data?.finalized_at
+    ? { count: data.event_count, date: formatDate(data.finalized_at) }
+    : { count: data?.event_count ?? 0 };
 
   return (
     <main className="mx-auto max-w-2xl px-5 py-14">
@@ -99,7 +103,7 @@ export default function VerifyReport() {
             </h2>
             <p className="mt-2 text-sm text-ink-2">
               {intact
-                ? t("trust.verifyIntactSub", { count: data.event_count, date: formatDate(data.created_at) })
+                ? t(integrityCopy, integrityCopyOptions)
                 : t("trust.verifyBrokenSub")}
             </p>
           </div>
